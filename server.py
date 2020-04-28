@@ -11,6 +11,9 @@ class ClientChannel(PodSixNet.Channel.Channel):
 
     def Network_startgame(self, data):
         pass
+
+    def Network_init(self, data):
+        pass
         # print('start')
         # self.is_waiting_to_start = False
         # self.start(data['init_money'], data['big_blind'], data['players_nick'])
@@ -32,6 +35,10 @@ class ClientChannel(PodSixNet.Channel.Channel):
         self._server.fold(data)
 
 
+    def Network_info(self, data):
+        self._server.info(data)
+
+
 class PokerServer(PodSixNet.Server.Server):
     channelClass = ClientChannel
 
@@ -43,24 +50,30 @@ class PokerServer(PodSixNet.Server.Server):
     def Connected(self, channel, addr):
         print('new connection:', channel)
         self.queue.joined_player(channel)
-        print(self.queue.no_players)
+        print(self.queue.cur_players)
 
         if self.queue.cur_players == 2:
             self.game = self.queue
             self.queue = None
 
             self.game.deal_cards()
-            self.game.start_game()
-            # print('starting game')
-            # for i, ch in enumerate(self.game.player_channels):
-            #     ch.Send({'action': 'startgame', 'init_money': self.game.init_money, 'big_blind': self.game.big_blind,
-            #              'players_nick': ['p1', 'p2', 'p3', 'p4', 'p5'], 'player_id': i})
-            #     # ch.Send({'action': 'getcards', 'cards': self.game.cards[i]})
+            self.game.game_init()
+
+            # self.game.add_nicks()
+            # self.game.start_game()
 
 
     def fold(self, data):
         print('in server fold')
         self.game.fold(data)
+
+    def info(self, data):
+        print('info server -- adding nicks')
+        self.game.add_nick(data['player_id'], data['nick'])
+
+        if len(self.game.id_to_nick.keys()) == self.game.cur_players:
+            self.game.add_nicks()
+            self.game.start_game()
 
 
 print("STARTING SERVER ON LOCALHOST")

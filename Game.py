@@ -15,6 +15,7 @@ class Game:
         self.is_playing = [True] * no_players
         self.money = [init_money] * no_players
         self.cards = []
+        self.id_to_nick = {}
 
 
     def joined_player(self, channel):
@@ -23,12 +24,26 @@ class Game:
         self.cards.append([None, None])
 
 
+    def add_nick(self, id, nick):
+        self.id_to_nick[id] = nick
+
+
+    def game_init(self):
+        for i, ch in enumerate(self.player_channels):
+            ids = [i for i in range(i+1, self.cur_players)] + [i for i in range(i)]
+            ch.Send({'action': 'init', 'init_money': self.init_money, 'big_blind': self.big_blind,
+                     'player_id': i, 'opp_ids': ids})
+            ch.Send({'action': 'getcards', 'cards': self.cards[i]})
+
     def start_game(self):
         print('starting game')
         for i, ch in enumerate(self.player_channels):
-            ch.Send({'action': 'startgame', 'init_money': self.init_money, 'big_blind': self.big_blind,
-                     'players_nick': ['p1', 'p2', 'p3', 'p4', 'p5'], 'player_id': i})
-            ch.Send({'action': 'getcards', 'cards': self.cards[i]})
+            ch.Send({'action': 'startgame'})
+
+    def add_nicks(self):
+        for i, ch in enumerate(self.player_channels):
+            ids = [i for i in range(i + 1, self.cur_players)] + [i for i in range(i)]
+            ch.Send({'action': 'addnicks', 'nicks': [self.id_to_nick[id_] for id_ in ids]})
 
 
     def fold(self, data):
@@ -68,7 +83,6 @@ class Game:
         get_fig = {i: i+2 for i in range(9)}
         get_fig[9] = 'J'; get_fig[10] = 'Q'; get_fig[11] = 'K'; get_fig[12] = 'A'
         cards = np.random.choice(52, size=2*self.cur_players, replace=False)
-        print(cards)
 
         for i in range(0, 2*self.cur_players, 2):
             c0, c1 = cards[i], cards[i+1]
