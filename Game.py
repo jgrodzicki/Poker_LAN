@@ -63,11 +63,12 @@ class Game:
         print('starting game')
         self.id_turn = 2%self.cur_players
         self.id_big_blind, self.id_small_blind = 1, 0
-        self.when_end = self.id_big_blind
+        self.when_end = (self.id_big_blind+1)%self.cur_players
         self.its = 0
 
         for i, ch in enumerate(self.player_channels):
             ch.Send({'action': 'startgame'})
+            ch.Send({'action': 'nextturn', 'player_id_turn': self.id_turn})
 
     def add_nicks(self):
         for i, ch in enumerate(self.player_channels):
