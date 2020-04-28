@@ -60,7 +60,7 @@ class Poker(ConnectionListener):
         self.check_b = Button('check', (self.width - 180, self.height-20), self.screen)
         self.raise_b = Button('raise', (self.width - 90, self.height-20), self.screen)
 
-        # self.raise_t = TextField((self.width - 90, self.height - 50), self.screen)
+        self.raise_t = TextField((self.width - 90, self.height - 50), self.screen)
 
 
     def update(self):
@@ -73,6 +73,18 @@ class Poker(ConnectionListener):
             # quit if the quit button was pressed
             if event.type == pygame.QUIT:
                 exit()
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                if self.fold_b.is_clicked():
+                    print('fold')
+                elif self.check_b.is_clicked():
+                    print('check')
+                elif self.raise_b.is_clicked():
+                    print('raise')
+                elif self.raise_t.is_clicked():
+                    self.raise_t.click_action()
+
+            elif event.type == pygame.KEYDOWN:
+                self.raise_t.update(event.key)
 
         # draw player
         self.screen.blit(self.card1, (self.width//2 - self.card_w - 5, self.height-100))
@@ -88,6 +100,7 @@ class Poker(ConnectionListener):
         self.fold_b.draw()
         self.check_b.draw()
         self.raise_b.draw()
+        self.raise_t.draw()
 
         # draw others
         for i, nick in enumerate(self.players_nick):
