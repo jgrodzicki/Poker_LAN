@@ -9,34 +9,47 @@ from time import sleep
 
 class Poker(ConnectionListener):
 
-    def __init__(self, c1='JH', c2='10H', nickname='grodzik', players_nick=['p1', None, 'p3', 'p4', 'p5']):
+    def __init__(self, c1='JH', c2='10H', nickname='grodzik', init_money=1000, players_nick=['p1', 'p2', 'p3', 'p4', 'p5']):
         # initialize shit
         pygame.init()
-        width, height = 550, 450
-        # card_w, card_h = 43, 62
+        self.width, self.height = 750, 500
+        self.card_w, self.card_h = 43, 62
+        nick_color, self.money_color = (100, 100, 100), (255, 255, 0)
         # 2
         # initialize the screen
-        self.screen = pygame.display.set_mode((width, height))
+        self.screen = pygame.display.set_mode((self.width, self.height))
         pygame.display.set_caption('Poker')
         # 3
         # initialize pygame clock
         self.clock = pygame.time.Clock()
 
+        self.is_turn = False
+
         # player
         self.card1 = pygame.image.load(f'images/{c1}.png')
-        # self.card1 = pygame.transform.scale(self.card1, (card_w, card_h))
         self.card2 = pygame.image.load(f'images/{c2}.png')
-        # self.card2 = pygame.transform.scale(self.card2, (card_w, card_h))
+        self.money = init_money
 
         self.back_card = pygame.image.load(f'images/back.png')
 
-        font = pygame.font.Font('freesansbold.ttf', 16)
-        self.nick = font.render(nickname, True, (0, 255, 0), None)
+        self.font = pygame.font.Font('freesansbold.ttf', 16)
+        self.nick = self.font.render(nickname, True, nick_color, None)
 
         # other players
-        self.players_nick = [font.render(nick, True, (0, 255, 0), None) if nick is not None else None for nick in players_nick]
-        self.players_pos = [(50, 250), (50, 100), (250, 50), (450, 100), (450, 250)]
-        # self.connect()
+        self.players_nick = [self.font.render(nick, True, nick_color, None) if nick is not None else None
+                             for nick in players_nick]
+        self.players_money = [init_money] * len(players_nick)
+        self.players_pos = [(self.width*0.75//5, self.height*3//5), (self.width*0.75//5, self.height*1.5//5),
+                            (self.width//2, 50), (self.width*4.25//5, self.height*1.5//5),
+                            (self.width*4.25//5, self.height*3//5)]
+
+        # cards on the table
+        self.on_table = [None] * 5
+        # self.on_table = [pygame.image.load(f'images/{card}.png') for card in ['AS', 'AH', 'JH', '3D', 'JC']]
+
+        self.bet = 0
+        self.bet_on_table = 0
+
 
     def update(self):
         # sleep to make the game 60 fps
@@ -49,24 +62,61 @@ class Poker(ConnectionListener):
             if event.type == pygame.QUIT:
                 exit()
 
-        self.screen.blit(self.card1, (225, 350))
-        self.screen.blit(self.card2, (275, 350))
-        self.screen.blit(self.nick,  (240, 320))
+        # draw player
+        self.screen.blit(self.card1, (self.width//2 - self.card_w - 5, self.height-100))
+        self.screen.blit(self.card2, (self.width//2 + 5, self.height-100))
+
+        nick_rect = self.nick.get_rect(center=(self.width // 2, self.height-20))
+        self.screen.blit(self.nick, nick_rect)
+
+        money_label = self.font.render(str(self.money), True, self.money_color, None)
+        money_rect = money_label.get_rect(center=(self.width//2, self.height-120))
+        self.screen.blit(money_label, money_rect)
 
 
+        # draw others
         for i, nick in enumerate(self.players_nick):
             if nick is None:
                 continue
             x, y = self.players_pos[i]
-            self.screen.blit(self.back_card, (x-25, y))
-            self.screen.blit(self.back_card, (x+25, y))
-            self.screen.blit(nick, (x-10, y-25))
+            self.screen.blit(self.back_card, (x-self.card_w-5, y))
+            self.screen.blit(self.back_card, (x+5, y))
 
+            nick_rect = nick.get_rect(center=(x, y+70))
+            self.screen.blit(nick, nick_rect)
+
+            money_label = self.font.render(str(self.players_money[i]), True, self.money_color, None)
+            money_rect = money_label.get_rect(center=(x, y-20))
+            self.screen.blit(money_label, money_rect)
+
+
+        # draw table
+        for i, card in enumerate(self.on_table):
+            if card is None:
+                break
+            self.screen.blit(card, (self.width//2 - (self.card_w//2) - (i-2)*(self.card_w+5), self.height//2))
 
         # update the screen
         pygame.display.update()
         self.clock.tick(60)
 
+
+    def _check(self):
+        pass
+
+
+    def _call(self):
+        if self.bet_on_table - self.bet < self.money:
+            self.money -= (self.bet_on_table - self.bet)
+            self.bet = self.bet_on_table
+        else:
+            self.bet += self.money
+            self.money = 0
+
+
+    def _raise(self, amount):
+        self.money -= (self.bet - amount)
+        self.bet = self.bet_on_table = amount
 
 
 
