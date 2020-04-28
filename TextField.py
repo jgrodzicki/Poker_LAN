@@ -21,6 +21,12 @@ class TextField:
         self.is_active = not self.is_active
 
 
+    def get_value(self):
+        if self.txt == '':
+            return 0
+        return int(self.txt)
+
+
     def draw(self):
         if self.is_active:
             self.bg = (255, 255, 255)

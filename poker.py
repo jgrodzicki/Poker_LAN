@@ -4,7 +4,7 @@ from PodSixNet.Connection import ConnectionListener, connection
 
 from collections import defaultdict
 import itertools
-from time import sleep
+import time
 
 from Button import Button
 from TextField import TextField
@@ -41,6 +41,10 @@ class Poker(ConnectionListener):
         self.font = pygame.font.Font('freesansbold.ttf', 16)
         self.nick = self.font.render(nickname, True, nick_color, None)
 
+        self.error_font = pygame.font.Font('freesansbold.ttf', 12)
+        self.error_raise_msg = self.error_font.render('INVALID VALUE', True, (255, 0, 0), (255, 255, 255))
+        self.error_time = 0
+
         # other players
         self.players_nick = [self.font.render(nick, True, nick_color, None) if nick is not None else None
                              for nick in players_nick]
@@ -59,7 +63,6 @@ class Poker(ConnectionListener):
         self.fold_b = Button('fold', (self.width - 270, self.height-20), self.screen)
         self.check_b = Button('check', (self.width - 180, self.height-20), self.screen)
         self.raise_b = Button('raise', (self.width - 90, self.height-20), self.screen)
-
         self.raise_t = TextField((self.width - 90, self.height - 50), self.screen)
 
 
@@ -80,6 +83,9 @@ class Poker(ConnectionListener):
                     print('check')
                 elif self.raise_b.is_clicked():
                     print('raise')
+                    val = self.raise_t.get_value()
+                    if val < self.big_blind or val > self.money:
+                        self.error_time = time.time()
                 elif self.raise_t.is_clicked():
                     self.raise_t.click_action()
 
@@ -101,6 +107,9 @@ class Poker(ConnectionListener):
         self.check_b.draw()
         self.raise_b.draw()
         self.raise_t.draw()
+
+        if time.time() - self.error_time < 8:
+            self.screen.blit(self.error_raise_msg, (self.width-135, self.height-80))
 
         # draw others
         for i, nick in enumerate(self.players_nick):
