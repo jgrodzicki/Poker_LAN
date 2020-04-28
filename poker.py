@@ -6,10 +6,14 @@ from collections import defaultdict
 import itertools
 from time import sleep
 
+from Button import Button
+from TextField import TextField
+
 
 class Poker(ConnectionListener):
 
-    def __init__(self, c1='JH', c2='10H', nickname='grodzik', init_money=1000, players_nick=['p1', 'p2', 'p3', 'p4', 'p5']):
+    def __init__(self, c1='JH', c2='10H', nickname='grodzik', init_money=1000, players_nick=['p1', 'p2', 'p3', 'p4', 'p5'],
+                 big_blind=50):
         # initialize shit
         pygame.init()
         self.width, self.height = 750, 500
@@ -24,6 +28,8 @@ class Poker(ConnectionListener):
         self.clock = pygame.time.Clock()
 
         self.is_turn = False
+        self.big_blind = big_blind
+        self.small_blind = big_blind//2
 
         # player
         self.card1 = pygame.image.load(f'images/{c1}.png')
@@ -50,6 +56,12 @@ class Poker(ConnectionListener):
         self.bet = 0
         self.bet_on_table = 0
 
+        self.fold_b = Button('fold', (self.width - 270, self.height-20), self.screen)
+        self.check_b = Button('check', (self.width - 180, self.height-20), self.screen)
+        self.raise_b = Button('raise', (self.width - 90, self.height-20), self.screen)
+
+        # self.raise_t = TextField((self.width - 90, self.height - 50), self.screen)
+
 
     def update(self):
         # sleep to make the game 60 fps
@@ -73,6 +85,9 @@ class Poker(ConnectionListener):
         money_rect = money_label.get_rect(center=(self.width//2, self.height-120))
         self.screen.blit(money_label, money_rect)
 
+        self.fold_b.draw()
+        self.check_b.draw()
+        self.raise_b.draw()
 
         # draw others
         for i, nick in enumerate(self.players_nick):
