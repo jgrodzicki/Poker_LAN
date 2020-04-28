@@ -34,6 +34,12 @@ class ClientChannel(PodSixNet.Channel.Channel):
         print('server fold')
         self._server.fold(data)
 
+    def Network_check(self, data):
+        self._server.check(data)
+
+    def Network_call(self, data):
+        self._server.call(data)
+
 
     def Network_info(self, data):
         self._server.info(data)
@@ -66,6 +72,18 @@ class PokerServer(PodSixNet.Server.Server):
     def fold(self, data):
         print('in server fold')
         self.game.fold(data)
+
+    def check(self, data):
+        print('in server check')
+        self.game.check(data)
+
+    def call(self, data):
+        print('in server call')
+        self.game.call(data)
+
+    def raise_(self, data):
+        print('in server raise')
+        self.game.raise_(data)
 
     def info(self, data):
         print('info server -- adding nicks')
