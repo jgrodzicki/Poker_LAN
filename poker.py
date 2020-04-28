@@ -9,7 +9,7 @@ from time import sleep
 
 class Poker(ConnectionListener):
 
-    def __init__(self, c1='JH', c2='10H', nickname='grodzik', players_nick=['p1', 'p2', 'p3', 'p4', 'p5']):
+    def __init__(self, c1='JH', c2='10H', nickname='grodzik', players_nick=['p1', None, 'p3', 'p4', 'p5']):
         # initialize shit
         pygame.init()
         width, height = 550, 450
@@ -34,7 +34,7 @@ class Poker(ConnectionListener):
         self.nick = font.render(nickname, True, (0, 255, 0), None)
 
         # other players
-        self.players_nick = [font.render(nick, True, (0, 255, 0), None) for nick in players_nick]
+        self.players_nick = [font.render(nick, True, (0, 255, 0), None) if nick is not None else None for nick in players_nick]
         self.players_pos = [(50, 250), (50, 100), (250, 50), (450, 100), (450, 250)]
         # self.connect()
 
@@ -55,6 +55,8 @@ class Poker(ConnectionListener):
 
 
         for i, nick in enumerate(self.players_nick):
+            if nick is None:
+                continue
             x, y = self.players_pos[i]
             self.screen.blit(self.back_card, (x-25, y))
             self.screen.blit(self.back_card, (x+25, y))
