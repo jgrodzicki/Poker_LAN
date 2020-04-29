@@ -61,7 +61,6 @@ class PokerServer(PodSixNet.Server.Server):
             self.game.deal_cards()
             self.game.game_init()
 
-
     def fold(self, data):
         self.game.fold(data)
 

@@ -38,13 +38,16 @@ class Game:
         self.deal_cards()
         self.is_flop = self.is_turn = self.is_river = False
         self.is_playing = {id: True for id in self.ids}
-        self.pot = [[0, {id: True for id in self.ids}]]
+        self.pot = [[self.big_blind * 1.5, {id: True for id in self.ids}]]
+
+        self.money[self.id_big_blind] -= self.big_blind
+        self.money[self.id_small_blind] -= self.big_blind//2
 
         for i, ch in enumerate(self.player_channels):
             id = self.ids[i]
-            ch.Send({'action': 'nextround', 'id_big_blind': self.id_big_blind, 'id_small_blind': self.id_small_blind})
+            ch.Send({'action': 'nextround', 'id_big_blind': self.id_big_blind, 'id_small_blind': self.id_small_blind, 'pot': self.pot})
             ch.Send({'action': 'getcards', 'cards': self.cards[id]})
-            ch.Send({'action': 'nextturn', 'player_id_turn': self.id_turn})
+            ch.Send({'action': 'nextturn', 'player_id_turn': self.id_turn, 'pot': self.pot})
 
     def flop(self):
         self.is_flop = True
@@ -136,7 +139,6 @@ class Game:
     def raise_(self, data):
         self.its = 0
         self.money[data['player_id']] = data['money']
-        self.pot.append([self.pot[-1][0], self.is_playing.copy()])
         self.pot[-1][0] += data['extra_to_pot']
         for ch in self.player_channels:
             ch.Send(data)
@@ -154,6 +156,10 @@ class Game:
 
         if self.its == self.no_playing:
             self.id_turn_cc = cycle(self.ids[self.id_small_blind:] + self.ids[:self.id_small_blind])
+            self.id_turn = next(self.id_turn_cc)
+            while not self.is_playing[self.id_turn]:
+                self.id_turn = next(self.id_turn_cc)
+
             self.its = 0
             self.no_playing = len(list(filter(lambda id_v: id_v[1], self.is_playing.items())))
 
@@ -170,7 +176,7 @@ class Game:
                 th.join()
                 self.next_round()
         for ch in self.player_channels:
-            ch.Send({'action': 'nextturn', 'player_id_turn': self.id_turn})
+            ch.Send({'action': 'nextturn', 'player_id_turn': self.id_turn, 'pot': self.pot})
 
 
     def logout(self, id):
