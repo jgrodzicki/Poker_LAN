@@ -54,7 +54,7 @@ class PokerServer(PodSixNet.Server.Server):
         self.queue.joined_player(channel)
         print(self.queue.cur_players)
 
-        if self.queue.cur_players == 2:
+        if self.queue.cur_players == 3:
             self.game = self.queue
             self.queue = None
 
@@ -63,19 +63,15 @@ class PokerServer(PodSixNet.Server.Server):
 
 
     def fold(self, data):
-        print('in server fold')
         self.game.fold(data)
 
     def check(self, data):
-        print('in server check')
         self.game.check(data)
 
     def call(self, data):
-        print('in server call')
         self.game.call(data)
 
     def raise_(self, data):
-        print('in server raise')
         self.game.raise_(data)
 
     def logout(self, data):
@@ -86,6 +82,7 @@ class PokerServer(PodSixNet.Server.Server):
 
         if len(self.game.id_to_nick.keys()) == self.game.cur_players:
             self.game.start_game()
+            self.game.next_round()
 
 
 print("STARTING SERVER ON LOCALHOST")
