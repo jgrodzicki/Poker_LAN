@@ -170,11 +170,11 @@ class Game:
             elif not self.is_river:
                 self.river()
             else:
-                self.pot_to_winners()
                 th = threading.Thread(target=lambda: time.sleep(5))
                 th.start()
-                th.join()
+                self.pot_to_winners()
                 self.next_round()
+                th.join()
         for ch in self.player_channels:
             ch.Send({'action': 'nextturn', 'player_id_turn': self.id_turn, 'pot': self.pot})
 
