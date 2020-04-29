@@ -119,13 +119,13 @@ class Game:
         self.pot[-1][1] = self.is_playing.copy()
         for ch in self.player_channels:
             ch.Send(data)
-        self.next_turn()
+        threading.Thread(target=self.next_turn).start()
 
 
     def check(self, data):
         for ch in self.player_channels:
             ch.Send(data)
-        self.next_turn()
+        threading.Thread(target=self.next_turn).start()
 
 
     def call(self, data):
@@ -133,7 +133,7 @@ class Game:
         self.pot[-1][0] += data['extra_to_pot']
         for ch in self.player_channels:
             ch.Send(data)
-        self.next_turn()
+        threading.Thread(target=self.next_turn).start()
 
 
     def raise_(self, data):
@@ -142,7 +142,7 @@ class Game:
         self.pot[-1][0] += data['extra_to_pot']
         for ch in self.player_channels:
             ch.Send(data)
-        self.next_turn()
+        threading.Thread(target=self.next_turn).start()
 
     def next_turn(self):
         print('next turn')
@@ -170,11 +170,10 @@ class Game:
             elif not self.is_river:
                 self.river()
             else:
-                th = threading.Thread(target=lambda: time.sleep(5))
-                th.start()
                 self.pot_to_winners()
+                time.sleep(5)
                 self.next_round()
-                th.join()
+
         for ch in self.player_channels:
             ch.Send({'action': 'nextturn', 'player_id_turn': self.id_turn, 'pot': self.pot})
 
