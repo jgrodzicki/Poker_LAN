@@ -10,11 +10,12 @@ class Game:
         self.big_blind = big_blind
         self.cur_players = 0
         self.no_players = no_players
-        self.when_end = None
 
+        self.pot = [[0, [True] * no_players]]
         self.id_turn = 0
         self.id_big_blind = self.id_small_blind = None
-        self.is_playing = [True] * no_players
+        self.is_playing = [False] * no_players
+        self.no_playing = 0
         self.money = [init_money] * no_players
         self.cards = []
         self.id_to_nick = {}
@@ -24,7 +25,11 @@ class Game:
     
     def next_round(self):
         self.id_big_blind, self.id_small_blind, self.id_turn = (self.id_big_blind+1)%self.cur_players, (self.id_small_blind+1)%self.cur_players, (self.id_turn+1)%self.cur_players
-
+        self.deal_cards()
+        for i, ch in enumerate(self.player_channels):
+            ch.Send({'action': 'nextround'})
+            ch.Send({'action': 'getcards', 'cards': self.cards[i]})
+            ch.Send({'action': 'nextturn', 'player_id_turn': self.id_turn})
 
     def flop(self):
         self.is_flop = True
@@ -54,6 +59,8 @@ class Game:
 
     def game_init(self):
         for i, ch in enumerate(self.player_channels):
+            self.no_playing += 1
+            self.is_playing[i] = True
             ids = [i for i in range(i+1, self.cur_players)] + [i for i in range(i)]
             ch.Send({'action': 'init', 'init_money': self.init_money, 'big_blind': self.big_blind,
                      'player_id': i, 'opp_ids': ids})
@@ -63,7 +70,6 @@ class Game:
         print('starting game')
         self.id_turn = 2%self.cur_players
         self.id_big_blind, self.id_small_blind = 1, 0
-        self.when_end = (self.id_big_blind+1)%self.cur_players
         self.its = 0
 
         for i, ch in enumerate(self.player_channels):
@@ -78,7 +84,8 @@ class Game:
 
     def fold(self, data):
         self.is_playing[data['player_id']] = False
-        print('in game fold')
+        self.pot[-1][1] = self.is_playing.copy()
+        print(self.pot)
         for ch in self.player_channels:
             ch.Send(data)
         self.next_turn()
@@ -87,19 +94,25 @@ class Game:
     def check(self, data):
         for ch in self.player_channels:
             ch.Send(data)
+        print(self.pot)
         self.next_turn()
 
 
     def call(self, data):
         self.money[data['player_id']] = data['money']
+        self.pot[-1][0] += data['extra_to_pot']
+        print(self.pot)
         for ch in self.player_channels:
             ch.Send(data)
         self.next_turn()
 
 
     def raise_(self, data):
-        self.when_end = data['player_id']
+        self.its = 0
         self.money[data['player_id']] = data['money']
+        self.pot.append([self.pot[-1][0], self.is_playing.copy()])
+        self.pot[-1][0] += data['extra_to_pot']
+        print(self.pot)
         for ch in self.player_channels:
             ch.Send(data)
         self.next_turn()
@@ -108,10 +121,16 @@ class Game:
         print('next turn')
         self.id_turn += 1
         self.id_turn = self.id_turn % self.cur_players
+        while not self.is_playing[self.id_turn]:
+            self.id_turn = (self.id_turn + 1) % self.cur_players
+
         self.its += 1
 
-        if self.id_turn == self.when_end and self.its > 0:
-            self.when_end, self.its = (self.id_big_blind+1)%self.cur_players, 0
+        if self.its == self.no_playing:
+            self.its = 0
+            self.id_turn = self.id_small_blind
+            self.no_playing = len(list(filter(lambda x: x, self.is_playing)))
+
             if not self.is_flop:
                 self.flop()
             elif not self.is_turn:
@@ -119,7 +138,8 @@ class Game:
             elif not self.is_river:
                 self.river()
             else:
-                pass
+                self.pot_to_winners()
+                self.next_round()
         for ch in self.player_channels:
             ch.Send({'action': 'nextturn', 'player_id_turn': self.id_turn})
 
@@ -137,3 +157,153 @@ class Game:
             c0, c1 = cards[i], cards[i+1]
             self.cards[i//2][0] = f'{get_fig[c0//4]}{get_color[c0%4]}'
             self.cards[i//2][1] = f'{get_fig[c1//4]}{get_color[c1%4]}'
+
+    def pot_to_winners(self):
+        pl_hands = [None] * self.cur_players
+        for i, pl_cards in enumerate(self.cards):
+            c, f = self.get_colors_and_figs(pl_cards)
+            pl_hands[i] = [self._is_straight_flush(c, f), self._is_four_of_kind(c, f), self._is_full_house(c, f),
+                        self._is_flush(c, f), self._is_straight(c, f), self._is_three_of_kind(c, f),
+                        self._is_two_pairs(c, f), self._is_pair(c, f), self._is_high_card(c, f)]
+
+        for p, played in self.pot:
+            winners = self.get_winners(pl_hands)
+            for w in winners:
+                self.money[int(w)] += p/len(winners)
+
+            for ch in self.player_channels:
+                for w in winners:
+                    ch.Send({'action': 'winner', 'player_id': int(w), 'won': p / len(winners)})
+
+
+    def get_winners(self, pl_hands):
+        for h in range(12):  # loop over possible hands
+            who_has = []
+            what = []
+            for i, ph in enumerate(pl_hands):
+                if ph[h] is not None:
+                    who_has.append(i)
+                    what.append(ph[h])
+
+            if len(who_has):
+                break
+
+        who_has = np.array(who_has)
+        what = np.array(what)
+
+        for i in range(what.shape[1]):
+            max_ = what[:, i].max()
+            idxs = what[:, i] == max_
+            what = what[idxs]
+            who_has = who_has[idxs]
+
+        return who_has
+
+
+
+    def get_colors_and_figs(self, pl_cards):
+        fig_to_no = {str(i): i-2 for i in range(2, 11)}
+        fig_to_no['J'] = 9; fig_to_no['Q'] = 10; fig_to_no['K'] = 11; fig_to_no['A'] = 12
+        col_to_no = {c: i for i, c in enumerate(['H', 'D', 'S', 'C'])}
+        colors = [0] * 4
+        figs = [0] * 13
+        for c in pl_cards + self.flop_cards + [self.turn_card] + [self.river_card]:
+            fg = fig_to_no[c[:-1]]
+            cl = col_to_no[c[-1]]
+            colors[cl] += 1
+            figs[fg] += 1
+        return colors, figs
+
+    def _is_straight_flush(self, colors, figs):
+        straight, flush = self._is_straight(colors, figs), self._is_flush(colors, figs)
+        if straight is not None and flush is not None:
+            return straight
+        return None
+
+    def _is_four_of_kind(self, colors, figs):
+        for i, n in enumerate(figs):
+            if n == 4:
+                res = [i]
+                res.extend(self._find_best_high(colors, figs, [i], 1))
+                return res
+        return None
+
+    def _is_full_house(self, colors, figs):
+        res = [None, None]
+        for i, n in enumerate(figs):
+            if n == 3:
+                res[0] = i
+            elif n == 2:
+                res[1] = i
+
+        if all(res):
+            return res
+        return None
+
+
+    def _is_flush(self, colors, figs):
+        if any(list(map(lambda x: x == 4, colors))):
+            return self._find_best_high(colors, figs, [], 5)
+        return None
+
+    def _is_straight(self, colors, figs):
+        res = [None]
+        cnt = 0
+        for i, n in enumerate(figs):
+            if n > 1:
+                return None
+            if n == 1:
+                cnt += 1
+            if cnt == 5:
+                return list(range(i, i-5, -1))
+            if n == 0 and 0 < cnt < 5:
+                return None
+
+
+    def _is_three_of_kind(self, colors, figs):
+        res = [None]
+        for i, n in enumerate(figs):
+            if n == 3:
+                res[0] = i
+
+        if res[0] is None:
+            return None
+
+        res.extend(self._find_best_high(colors, figs, res, 2))
+        return res
+
+    def _is_two_pairs(self, colors, figs):
+        res = []
+        for i, n in enumerate(figs):
+            if n == 2:
+                res.append(i)
+
+        if len(res) < 2:
+            return None
+
+        res = res[::-1][:2]
+        res.extend(self._find_best_high(colors, figs, res, 1))
+        return res
+
+    def _is_pair(self, colors, figs):  # pair, 3 best other
+        res = [None]
+        for i, n in enumerate(figs):
+            if n == 2:
+                res[0] = i
+
+        if res[0] is None:
+            return None
+
+        res.extend(self._find_best_high(colors, figs, [res[0]], 3))
+        return res
+
+    def _is_high_card(self, colors, figs):  # 5 cards
+        return self._find_best_high(colors, figs, [], 5)
+
+    def _find_best_high(self, colors, figs, without, to_ret):
+        res = []
+        for i, n in enumerate(figs):
+            if i in without:
+                continue
+            res.extend([i] * n)
+        return res[::-1][:to_ret]

@@ -40,6 +40,9 @@ class ClientChannel(PodSixNet.Channel.Channel):
     def Network_call(self, data):
         self._server.call(data)
 
+    def Network_raise(self, data):
+        self._server.raise_(data)
+
 
     def Network_info(self, data):
         self._server.info(data)
