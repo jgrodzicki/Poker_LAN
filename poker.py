@@ -51,6 +51,7 @@ class Poker(ConnectionListener):
         self.error_time = 0
 
         # other players
+        self.opp_cards_img = {}
         self.is_opp_playing = {}
         self.id_turn = None
         self.opp_bet = {}
@@ -129,6 +130,7 @@ class Poker(ConnectionListener):
         self.opp_money[id] = data['money']
         self.opp_bet[id] = 0
         self.is_opp_playing[id] = True
+        self.opp_cards_img[id] = [pygame.image.load('images/back.png'), pygame.image.load('images/back.png')]
 
     def Network_addnick(self, data):
         self.players_nick[data['player_id']] = data['nick']
@@ -190,8 +192,12 @@ class Poker(ConnectionListener):
         id = data['player_id']
         if id == self.player_id:
             self.is_playing = False
+            self.card1.fill((255, 255, 255, 100), None, pygame.BLEND_RGBA_MULT)
+            self.card2.fill((255, 255, 255, 100), None, pygame.BLEND_RGBA_MULT)
         else:
             self.is_opp_playing[id] = False
+            self.opp_cards_img[id][0].fill((255, 255, 255, 100), None, pygame.BLEND_RGBA_MULT)
+            self.opp_cards_img[id][1].fill((255, 255, 255, 100), None, pygame.BLEND_RGBA_MULT)
 
     def Network_check(self, data):
         pass
@@ -211,9 +217,15 @@ class Poker(ConnectionListener):
     def Network_winner(self, data):
         id = data['player_id']
         if id == self.player_id:
-            self.money += data['won']
+            self.money += int(data['won'])
         else:
-            self.opp_money[id] += data['won']
+            self.opp_money[id] += int(data['won'])
+
+    def Network_showcards(self, data):
+        id = data['player_id']
+        if id != self.player_id:
+            c1, c2 = data['cards']
+            self.opp_cards_img[id] = [pygame.image.load(f'images/{c1}.png'), pygame.image.load(f'images/{c2}.png')]
 
     def Network_logout(self, data):
         pass
@@ -313,9 +325,8 @@ class Poker(ConnectionListener):
 
             x, y = self.players_pos[i]
 
-            if self.is_opp_playing[id]:
-                self.screen.blit(self.back_card, (x-self.card_w-5, y))
-                self.screen.blit(self.back_card, (x+5, y))
+            self.screen.blit(self.opp_cards_img[id][0], (x-self.card_w-5, y))
+            self.screen.blit(self.opp_cards_img[id][1], (x+5, y))
 
             if id == self.id_big_blind:
                 self.screen.blit(self.font.render('BB', True, (150, 150, 150), None), (x+50, y+10))
