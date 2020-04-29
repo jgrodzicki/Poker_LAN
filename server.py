@@ -2,25 +2,12 @@ import PodSixNet.Channel
 import PodSixNet.Server
 from time import sleep
 
-import threading
-
 from Game import Game
 
 
 class ClientChannel(PodSixNet.Channel.Channel):
     def Network(self, data):
         print(data)
-
-    def Network_startgame(self, data):
-        pass
-
-    def Network_init(self, data):
-        pass
-
-
-    def Network_getcards(self, data):
-        pass
-
 
     def Network_fold(self, data):
         self._server.fold(data)
@@ -38,6 +25,7 @@ class ClientChannel(PodSixNet.Channel.Channel):
         self._server.logout(data)
 
     def Network_info(self, data):
+        print('info1')
         self._server.info(data)
 
 
@@ -54,7 +42,7 @@ class PokerServer(PodSixNet.Server.Server):
         self.queue.joined_player(channel)
         print(self.queue.cur_players)
 
-        if self.queue.cur_players == 3:
+        if self.queue.cur_players == 2:
             self.game = self.queue
             self.queue = None
 
@@ -77,9 +65,11 @@ class PokerServer(PodSixNet.Server.Server):
         self.game.logout(data['player_id'])
 
     def info(self, data):
+        print('info')
         self.game.add_nick(data['player_id'], data['nick'])
 
         if len(self.game.id_to_nick.keys()) == self.game.cur_players:
+            print('here')
             self.game.start_game()
             self.game.next_round()
 

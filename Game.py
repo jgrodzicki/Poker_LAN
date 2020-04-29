@@ -29,6 +29,8 @@ class Game:
         self.id_to_nick = {}
         self.ids = []
 
+        self.its = 0
+
         self.is_flop = self.is_turn = self.is_river = False
         self.flop_cards = self.turn_card = self.river_card = None
     
@@ -39,13 +41,15 @@ class Game:
         self.deal_cards()
         self.is_flop = self.is_turn = self.is_river = False
         self.is_playing = {id: True for id in self.ids}
-        self.no_playing = self.no_players
+        self.no_playing = self.cur_players
         self.pot = [[self.big_blind * 1.5, {id: True for id in self.ids}]]
 
         self.money[self.id_big_blind] -= self.big_blind
         self.money[self.id_small_blind] -= self.big_blind//2
 
         self.no_folds = 0
+
+        print(self.id_big_blind, self.id_small_blind)
 
         for i, ch in enumerate(self.player_channels):
             id = self.ids[i]
@@ -83,7 +87,7 @@ class Game:
 
 
     def game_init(self):
-        print(f'turn init: {self.ids[2:] + self.ids[:2]}')
+        print('game_init')
         self.id_turn_cc = cycle(self.ids[2:] + self.ids[:2])
         self.id_big_blind_cc = cycle(self.ids[1:] + self.ids[1:])
         self.id_small_blind_cc = cycle(self.ids)
@@ -107,12 +111,6 @@ class Game:
 
     def start_game(self):
         print('starting game')
-
-        self.id_turn = next(self.id_turn_cc)
-        self.id_big_blind = next(self.id_big_blind_cc)
-        self.id_small_blind = next(self.id_small_blind_cc)
-
-        self.its = 0
 
         for i, ch in enumerate(self.player_channels):
             ch.Send({'action': 'startgame'})

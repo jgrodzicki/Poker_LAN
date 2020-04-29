@@ -17,11 +17,11 @@ class Button:
 
 
     def to_check(self):
-        self.change_txt('CHECK')
+        self.change_txt('check')
 
 
-    def to_call(self):
-        self.change_txt('CALL')
+    def to_call(self, value):
+        self.change_txt(f'call {value}')
 
 
     def change_txt(self, txt):
