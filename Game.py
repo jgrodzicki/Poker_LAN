@@ -128,7 +128,7 @@ class Game:
             for p in self.pot:
                 for ch in self.player_channels:
                     ch.Send({'action': 'winner', 'player_id': won_id, 'won': p[0]})
-            time.sleep(3)
+            time.sleep(10)
             self.next_round()
         else:
             self.pot[-1][1] = self.is_playing.copy()
@@ -229,6 +229,11 @@ class Game:
                                 self._is_flush(c, f), self._is_straight(c, f), self._is_three_of_kind(c, f),
                                 self._is_two_pairs(c, f), self._is_pair(c, f), self._is_high_card(c, f)]
 
+                name = ['str flush', '4', 'full', 'flush', 'str', '3', '2x2', '2', 'high']
+                for i, h in enumerate(pl_hands[id]):
+                    if h is not None:
+                        print(f'{self.id_to_nick[id]} has {name[i]}')
+
         # show cards of anyone who played till the end
         for id, is_p in self.is_playing.items():
             if is_p:
@@ -286,7 +291,7 @@ class Game:
     def _is_straight_flush(self, colors, figs):
         straight, flush = self._is_straight(colors, figs), self._is_flush(colors, figs)
         if straight is not None and flush is not None:
-            return straight
+            return straight  # not working
         return None
 
     def _is_four_of_kind(self, colors, figs):
@@ -311,12 +316,11 @@ class Game:
 
 
     def _is_flush(self, colors, figs):
-        if any(list(map(lambda x: x == 4, colors))):
-            return self._find_best_high(colors, figs, [], 5)
+        if any(list(map(lambda x: x == 5, colors))):
+            return self._find_best_high(colors, figs, [], 5)  # not working
         return None
 
     def _is_straight(self, colors, figs):
-        res = [None]
         cnt = 0
         for i, n in enumerate(figs):
             if n > 1:

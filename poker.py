@@ -144,6 +144,9 @@ class Poker(ConnectionListener):
         self.id_big_blind = data['id_big_blind']
         self.id_small_blind = data['id_small_blind']
 
+        self.opp_cards_img = {id: [pygame.image.load('images/back.png'), pygame.image.load('images/back.png')]
+                              for id in self.opp_ids}
+
         self.pot_val = self.big_blind * 1.5
 
         self.bet = 0
@@ -366,9 +369,10 @@ class Poker(ConnectionListener):
         self.screen.blit(self.font.render(f'big blind: {self.big_blind}', True, (150, 150, 150), None),
                          (0, 0))
 
-        pot_val_label = self.font.render(str(int(self.pot_val)), True, self.money_color, None)
-        pot_val_rect = pot_val_label.get_rect(center=(self.width//2, self.height//2 - 30))
-        self.screen.blit(pot_val_label, pot_val_rect)
+        if self.pot_val is not None:
+            pot_val_label = self.font.render(str(int(self.pot_val)), True, self.money_color, None)
+            pot_val_rect = pot_val_label.get_rect(center=(self.width//2, self.height//2 - 30))
+            self.screen.blit(pot_val_label, pot_val_rect)
 
         for i, card in enumerate(self.on_table):
             if card is None:
