@@ -23,6 +23,7 @@ class Game:
         self.id_turn_cc = self.id_big_blind_cc = self.id_small_blind_cc = None  # cycles
         self.is_playing = {}
         self.no_playing = 0
+        self.no_folds = 0
         self.money = {}
         self.cards = {}
         self.id_to_nick = {}
@@ -38,10 +39,13 @@ class Game:
         self.deal_cards()
         self.is_flop = self.is_turn = self.is_river = False
         self.is_playing = {id: True for id in self.ids}
+        self.no_playing = self.no_players
         self.pot = [[self.big_blind * 1.5, {id: True for id in self.ids}]]
 
         self.money[self.id_big_blind] -= self.big_blind
         self.money[self.id_small_blind] -= self.big_blind//2
+
+        self.no_folds = 0
 
         for i, ch in enumerate(self.player_channels):
             id = self.ids[i]
@@ -116,10 +120,23 @@ class Game:
 
     def fold(self, data):
         self.is_playing[data['player_id']] = False
-        self.pot[-1][1] = self.is_playing.copy()
-        for ch in self.player_channels:
-            ch.Send(data)
-        threading.Thread(target=self.next_turn).start()
+        self.no_folds += 1
+        if self.cur_players - self.no_folds == 1:
+            won_id = None
+            for id, f in self.is_playing.items():
+                if f:
+                    won_id = id
+                    break
+            for p in self.pot:
+                for ch in self.player_channels:
+                    ch.Send({'action': 'winner', 'player_id': won_id, 'won': p[0]})
+            time.sleep(3)
+            self.next_round()
+        else:
+            self.pot[-1][1] = self.is_playing.copy()
+            for ch in self.player_channels:
+                ch.Send(data)
+            threading.Thread(target=self.next_turn).start()
 
 
     def check(self, data):
@@ -205,11 +222,12 @@ class Game:
     def pot_to_winners(self):
         pl_hands = {}
         for id in self.ids:
-            pl_cards = self.cards[id]
-            c, f = self.get_colors_and_figs(pl_cards)
-            pl_hands[id] = [self._is_straight_flush(c, f), self._is_four_of_kind(c, f), self._is_full_house(c, f),
-                            self._is_flush(c, f), self._is_straight(c, f), self._is_three_of_kind(c, f),
-                            self._is_two_pairs(c, f), self._is_pair(c, f), self._is_high_card(c, f)]
+            if self.is_playing[id]:
+                pl_cards = self.cards[id]
+                c, f = self.get_colors_and_figs(pl_cards)
+                pl_hands[id] = [self._is_straight_flush(c, f), self._is_four_of_kind(c, f), self._is_full_house(c, f),
+                                self._is_flush(c, f), self._is_straight(c, f), self._is_three_of_kind(c, f),
+                                self._is_two_pairs(c, f), self._is_pair(c, f), self._is_high_card(c, f)]
 
         # show cards of anyone who played till the end
         for id, is_p in self.is_playing.items():
