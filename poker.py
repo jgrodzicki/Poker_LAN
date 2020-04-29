@@ -34,6 +34,8 @@ class Poker(ConnectionListener):
         self.is_waiting_to_start = True
         self.player_id = None
 
+        self.pot_val = None
+
         self.money = None
         self.big_blind = self.small_blind = None
         self.id_big_blind = self.id_small_blind = None
@@ -142,6 +144,8 @@ class Poker(ConnectionListener):
         self.id_big_blind = data['id_big_blind']
         self.id_small_blind = data['id_small_blind']
 
+        self.pot_val = self.big_blind * 1.5
+
         self.bet = 0
         self.bet_on_table = self.big_blind
 
@@ -226,6 +230,9 @@ class Poker(ConnectionListener):
         if id != self.player_id:
             c1, c2 = data['cards']
             self.opp_cards_img[id] = [pygame.image.load(f'images/{c1}.png'), pygame.image.load(f'images/{c2}.png')]
+
+    def Network_updatepot(self, data):
+        self.pot_val = data['pot_val']
 
     def Network_logout(self, data):
         pass
@@ -334,7 +341,7 @@ class Poker(ConnectionListener):
                 self.screen.blit(self.font.render('SB', True, (150, 150, 150), None), (x+50, y+10))
 
             if self.id_turn == id:
-                self.screen.blit(self.font.render('turn', True, (100, 100, 100), None), (x, y+90))
+                self.screen.blit(self.font.render('turn', True, (100, 100, 100), None), (x+50, y+40))
 
             nick_label = self.font.render(nick, True, self.nick_color, None)
             nick_rect = nick_label.get_rect(center=(x, y+70))
@@ -358,6 +365,10 @@ class Poker(ConnectionListener):
     def _draw_table(self):
         self.screen.blit(self.font.render(f'big blind: {self.big_blind}', True, (150, 150, 150), None),
                          (0, 0))
+
+        pot_val_label = self.font.render(str(int(self.pot_val)), True, self.money_color, None)
+        pot_val_rect = pot_val_label.get_rect(center=(self.width//2, self.height//2 - 30))
+        self.screen.blit(pot_val_label, pot_val_rect)
 
         for i, card in enumerate(self.on_table):
             if card is None:

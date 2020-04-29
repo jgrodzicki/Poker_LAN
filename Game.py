@@ -148,6 +148,7 @@ class Game:
         self.pot[-1][0] += data['extra_to_pot']
         for ch in self.player_channels:
             ch.Send(data)
+            ch.Send({'action': 'updatepot', 'pot_val': self.pot[-1][0]})
         threading.Thread(target=self.next_turn).start()
 
 
@@ -157,6 +158,7 @@ class Game:
         self.pot[-1][0] += data['extra_to_pot']
         for ch in self.player_channels:
             ch.Send(data)
+            ch.Send({'action': 'updatepot', 'pot_val': self.pot[-1][0]})
         threading.Thread(target=self.next_turn).start()
 
     def next_turn(self):
