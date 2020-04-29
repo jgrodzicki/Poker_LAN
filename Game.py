@@ -1,4 +1,5 @@
 import numpy as np
+import time
 
 
 class Game:
@@ -26,7 +27,9 @@ class Game:
     def next_round(self):
         self.id_big_blind, self.id_small_blind, self.id_turn = (self.id_big_blind+1)%self.cur_players, (self.id_small_blind+1)%self.cur_players, (self.id_turn+1)%self.cur_players
         self.deal_cards()
+        self.is_flop = self.is_turn = self.is_river = False
         for i, ch in enumerate(self.player_channels):
+            self.is_playing[i] = True
             ch.Send({'action': 'nextround'})
             ch.Send({'action': 'getcards', 'cards': self.cards[i]})
             ch.Send({'action': 'nextturn', 'player_id_turn': self.id_turn})
@@ -139,6 +142,7 @@ class Game:
                 self.river()
             else:
                 self.pot_to_winners()
+                time.sleep(5)
                 self.next_round()
         for ch in self.player_channels:
             ch.Send({'action': 'nextturn', 'player_id_turn': self.id_turn})
