@@ -2,6 +2,8 @@ import PodSixNet.Channel
 import PodSixNet.Server
 from time import sleep
 
+import threading
+
 from Game import Game
 
 
@@ -14,24 +16,13 @@ class ClientChannel(PodSixNet.Channel.Channel):
 
     def Network_init(self, data):
         pass
-        # print('start')
-        # self.is_waiting_to_start = False
-        # self.start(data['init_money'], data['big_blind'], data['players_nick'])
-        # self.is_opp_playing = [True] * len(data['players_nick'])
-        # self.player_id = data['player_id']
-        # if self.player_id == 0:
-        #     self.is_turn = True
 
 
     def Network_getcards(self, data):
         pass
-        # c1, c2 = data['cards']
-        # self.card1 = pygame.image.load(f'images/{c1}.png')
-        # self.card2 = pygame.image.load(f'images/{c2}.png')
 
 
     def Network_fold(self, data):
-        print('server fold')
         self._server.fold(data)
 
     def Network_check(self, data):
@@ -43,6 +34,8 @@ class ClientChannel(PodSixNet.Channel.Channel):
     def Network_raise(self, data):
         self._server.raise_(data)
 
+    def Network_logout(self, data):
+        self._server.logout(data)
 
     def Network_info(self, data):
         self._server.info(data)
@@ -68,9 +61,6 @@ class PokerServer(PodSixNet.Server.Server):
             self.game.deal_cards()
             self.game.game_init()
 
-            # self.game.add_nicks()
-            # self.game.start_game()
-
 
     def fold(self, data):
         print('in server fold')
@@ -88,12 +78,13 @@ class PokerServer(PodSixNet.Server.Server):
         print('in server raise')
         self.game.raise_(data)
 
+    def logout(self, data):
+        self.game.logout(data['player_id'])
+
     def info(self, data):
-        print('info server -- adding nicks')
         self.game.add_nick(data['player_id'], data['nick'])
 
         if len(self.game.id_to_nick.keys()) == self.game.cur_players:
-            self.game.add_nicks()
             self.game.start_game()
 
 

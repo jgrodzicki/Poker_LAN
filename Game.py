@@ -1,6 +1,8 @@
 import numpy as np
 import time
 
+import threading
+
 
 class Game:
     def __init__(self, no_players=6, init_money=1000, big_blind=50):
@@ -12,12 +14,14 @@ class Game:
         self.cur_players = 0
         self.no_players = no_players
 
+        self.init_money = init_money
+
         self.pot = [[0, [True] * no_players]]
         self.id_turn = 0
         self.id_big_blind = self.id_small_blind = None
         self.is_playing = [False] * no_players
         self.no_playing = 0
-        self.money = [init_money] * no_players
+        self.money = []
         self.cards = []
         self.id_to_nick = {}
 
@@ -58,16 +62,25 @@ class Game:
 
     def add_nick(self, id, nick):
         self.id_to_nick[id] = nick
+        for ch in self.player_channels:
+            ch.Send({'action': 'addnick', 'player_id': id, 'nick': nick})
 
 
     def game_init(self):
         for i, ch in enumerate(self.player_channels):
             self.no_playing += 1
             self.is_playing[i] = True
-            ids = [i for i in range(i+1, self.cur_players)] + [i for i in range(i)]
+            self.money.append(self.init_money)
             ch.Send({'action': 'init', 'init_money': self.init_money, 'big_blind': self.big_blind,
-                     'player_id': i, 'opp_ids': ids})
+                     'player_id': i})
             ch.Send({'action': 'getcards', 'cards': self.cards[i]})
+
+        for i, ch in enumerate(self.player_channels):  # notify about other players
+            j = (i+1) % self.cur_players
+            while j != i:
+                ch.Send({'action': 'addplayer', 'player_id': j, 'money': self.init_money})
+                j = (j+1) % self.cur_players
+
 
     def start_game(self):
         print('starting game')
@@ -78,11 +91,6 @@ class Game:
         for i, ch in enumerate(self.player_channels):
             ch.Send({'action': 'startgame'})
             ch.Send({'action': 'nextturn', 'player_id_turn': self.id_turn})
-
-    def add_nicks(self):
-        for i, ch in enumerate(self.player_channels):
-            ids = [i for i in range(i + 1, self.cur_players)] + [i for i in range(i)]
-            ch.Send({'action': 'addnicks', 'nicks': [self.id_to_nick[id_] for id_ in ids]})
 
 
     def fold(self, data):
@@ -142,7 +150,9 @@ class Game:
                 self.river()
             else:
                 self.pot_to_winners()
-                time.sleep(5)
+                th = threading.Thread(target=lambda: time.sleep(5))
+                th.start()
+                th.join()
                 self.next_round()
         for ch in self.player_channels:
             ch.Send({'action': 'nextturn', 'player_id_turn': self.id_turn})
@@ -170,6 +180,12 @@ class Game:
                         self._is_flush(c, f), self._is_straight(c, f), self._is_three_of_kind(c, f),
                         self._is_two_pairs(c, f), self._is_pair(c, f), self._is_high_card(c, f)]
 
+        # show cards of anyone who played till the end
+        for id, is_p in enumerate(self.is_playing):
+            if is_p:
+                for ch in self.player_channels:
+                    ch.Send({'action': 'showcards', 'player_id': id, 'cards': self.cards[id]})
+
         for p, played in self.pot:
             winners = self.get_winners(pl_hands)
             for w in winners:
@@ -178,6 +194,15 @@ class Game:
             for ch in self.player_channels:
                 for w in winners:
                     ch.Send({'action': 'winner', 'player_id': int(w), 'won': p / len(winners)})
+
+
+    def logout(self, id):
+        for ch in self.player_channels:
+            ch.Send({'action': 'logout', 'player_id': id})
+        self.player_channels = self.player_channels[:id] + self.player_channels[id+1:]
+        self.cur_players -= 1
+        self.money = self.money[:id] + self.money[id+1:]
+        self.cards = self.cards[:id] + self.cards[id+1:]
 
 
     def get_winners(self, pl_hands):
