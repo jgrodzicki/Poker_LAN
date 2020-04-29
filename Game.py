@@ -186,7 +186,7 @@ class Game:
                 self.river()
             else:
                 self.pot_to_winners()
-                time.sleep(5)
+                time.sleep(8)
                 self.next_round()
 
         for ch in self.player_channels:

@@ -127,6 +127,8 @@ class Poker(ConnectionListener):
         id = data['player_id']
         self.opp_ids.append(id)
         self.opp_money[id] = data['money']
+        self.opp_bet[id] = 0
+        self.is_opp_playing[id] = True
 
     def Network_addnick(self, data):
         self.players_nick[data['player_id']] = data['nick']
@@ -170,12 +172,18 @@ class Poker(ConnectionListener):
             self.id_turn = data['player_id_turn']
 
     def Network_flop(self, data):
+        self.bet = self.bet_on_table = 0
+        self.opp_bet = {id: 0 for id in self.opp_ids}
         self.on_table[:3] = list(map(lambda c: pygame.image.load(f'images/{c}.png'), data['cards']))
 
     def Network_turn(self, data):
+        self.bet = self.bet_on_table = 0
+        self.opp_bet = {id: 0 for id in self.opp_ids}
         self.on_table[3] = pygame.image.load(f'images/{data["card"]}.png')
 
     def Network_river(self, data):
+        self.bet = self.bet_on_table = 0
+        self.opp_bet = {id: 0 for id in self.opp_ids}
         self.on_table[4] = pygame.image.load(f'images/{data["card"]}.png')
 
     def Network_fold(self, data):
@@ -199,6 +207,16 @@ class Poker(ConnectionListener):
             self.opp_money[id] = data['money']
             self.bet_on_table = data['amount']
             self.check_b.change_txt(f'call {self.bet_on_table}')
+
+    def Network_winner(self, data):
+        id = data['player_id']
+        if id == self.player_id:
+            self.money += data['won']
+        else:
+            self.opp_money[id] += data['won']
+
+    def Network_logout(self, data):
+        pass
 
 
     def _fold(self):
@@ -255,7 +273,7 @@ class Poker(ConnectionListener):
                         self._call()
                     elif self.raise_b.is_clicked():
                         val = self.raise_t.get_value()
-                        if val < self.big_blind or val < 2*self.bet or val < self.bet_on_table or val > self.money:
+                        if val < self.bet_on_table+self.big_blind or val > self.money:
                             self.error_time = time.time()
                         else:
                             self._raise(val)
@@ -294,8 +312,10 @@ class Poker(ConnectionListener):
                 continue
 
             x, y = self.players_pos[i]
-            self.screen.blit(self.back_card, (x-self.card_w-5, y))
-            self.screen.blit(self.back_card, (x+5, y))
+
+            if self.is_opp_playing[id]:
+                self.screen.blit(self.back_card, (x-self.card_w-5, y))
+                self.screen.blit(self.back_card, (x+5, y))
 
             if id == self.id_big_blind:
                 self.screen.blit(self.font.render('BB', True, (150, 150, 150), None), (x+50, y+10))
@@ -325,6 +345,9 @@ class Poker(ConnectionListener):
 
 
     def _draw_table(self):
+        self.screen.blit(self.font.render(f'big blind: {self.big_blind}', True, (150, 150, 150), None),
+                         (0, 0))
+
         for i, card in enumerate(self.on_table):
             if card is None:
                 break
