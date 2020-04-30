@@ -144,6 +144,8 @@ class Poker(ConnectionListener):
         self.opp_bet[id] = 0
         self.is_opp_playing[id] = True
         self.opp_cards_img[id] = [pygame.image.load('images/back.png'), pygame.image.load('images/back.png')]
+        self.players_nick[id] = 'nickname'
+        self.is_opp_out[id] = None
         print(f'adding player with id: {id}')
 
     def Network_addnick(self, data):
@@ -203,19 +205,19 @@ class Poker(ConnectionListener):
         self.bet = self.bet_on_table = 0
         self.opp_bet = {id: 0 for id in self.opp_ids}
         self.on_table[:3] = list(map(lambda c: pygame.image.load(f'images/{c}.png'), data['cards']))
-        self.raise_t.change_txt(f'{2*self.big_blind}')
+        self.raise_t.change_txt(str(self.big_blind))
 
     def Network_turn(self, data):
         self.bet = self.bet_on_table = 0
         self.opp_bet = {id: 0 for id in self.opp_ids}
         self.on_table[3] = pygame.image.load(f'images/{data["card"]}.png')
-        self.raise_t.change_txt(f'{2*self.big_blind}')
+        self.raise_t.change_txt(str(self.big_blind))
 
     def Network_river(self, data):
         self.bet = self.bet_on_table = 0
         self.opp_bet = {id: 0 for id in self.opp_ids}
         self.on_table[4] = pygame.image.load(f'images/{data["card"]}.png')
-        self.raise_t.change_txt(f'{2*self.big_blind}')
+        self.raise_t.change_txt(str(self.big_blind))
 
     def Network_fold(self, data):
         id = data['player_id']
@@ -323,6 +325,8 @@ class Poker(ConnectionListener):
             # quit if the quit button was pressed
             if event.type == pygame.QUIT:
                 print('attempt to logout')
+                if self.is_playing:
+                    self.Send({'action': 'fold', 'player_id': self.player_id})
                 self.Send({'action': 'logout', 'player_id': self.player_id})
 
             if self.is_turn:
@@ -346,7 +350,7 @@ class Poker(ConnectionListener):
                     self.raise_t.update(event.key)
 
     def _draw_player(self):
-        if not self.is_out:
+        if not self.is_out and self.card1 is not None and self.card2 is not None:
             self.screen.blit(self.card1, (self.width // 2 - self.card_w - 5, self.height - 100))
             self.screen.blit(self.card2, (self.width // 2 + 5, self.height - 100))
 

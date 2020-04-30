@@ -12,7 +12,8 @@ Clone the repo `git clone https://github.com/jgrodzicki/Poker_LAN.git` and run `
 #### Run as host
 `python3 server.py address port number_of_players init_money big_blind`
 
-where `number_of_players`, `init_money` and `big_blind` are optional, by default equal `6`, `1000`, `50` respectively.
+where `number_of_players`, `init_money` and `big_blind` are optional, by default equal `2`, `1000`, `50` respectively.
+`number_of_players` describes minimal number of players to start the game.
 
 
 #### TODO:

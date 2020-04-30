@@ -7,9 +7,8 @@ from itertools import cycle
 
 
 class Game:
-    def __init__(self, no_players=6, init_money=1000, big_blind=50):
+    def __init__(self, no_players, init_money, big_blind):
         self.no_players = 0
-        self.player_nicks = [None] * no_players
         self.player_channels = {}
         self.init_money = init_money
         self.big_blind = big_blind
@@ -29,6 +28,10 @@ class Game:
         self.cards = {}
         self.id_to_nick = {}
         self.ids = []
+        self.id_gen = (i for i in range(10000))
+
+        self.queue = []
+        self.is_game_on = False
 
         self.its = 0
 
@@ -37,6 +40,57 @@ class Game:
     
     
     def next_round(self):
+        while len(self.queue) and self.cur_players < 6:
+            id = next(self.id_gen)
+            channel = self.queue[0]
+            self.queue = self.queue[1:]
+
+            # update vars
+            self.cur_players += 1
+            self.player_channels[id] = channel
+            self.ids.append(id)
+            self.is_playing[id] = self.is_allin[id] = self.cards[id] = None
+            self.money[id] = self.init_money
+
+            channel.Send({'action': 'init', 'init_money': self.init_money, 'player_id': id, 'big_blind': self.big_blind})
+
+            # notify others
+            for id1 in self.ids:
+                if id1 == id:
+                    continue
+                self.player_channels[id1].Send({'action': 'addplayer', 'player_id': id, 'money': self.money[id]})
+                self.player_channels[id].Send({'action': 'addplayer', 'player_id': id1, 'money': self.money[id1]})
+                # self.player_channels[id1].Send({'action': 'addnick', 'player_id': id, 'nick': self.id_to_nick[id]})
+                self.player_channels[id].Send({'action': 'addnick', 'player_id': id1, 'nick': self.id_to_nick[id1]})
+
+            channel.Send({'action': 'startgame'})
+
+            # update cycles
+            id_turns = []
+            t = next(self.id_turn_cc)
+            while t not in id_turns:
+                id_turns.append(t)
+                t = next(self.id_turn_cc)
+            id_turns.append(id)
+            self.id_turn_cc = cycle(id_turns)
+
+            id_bblind = []
+            t = next(self.id_big_blind_cc)
+            while t not in id_bblind:
+                id_bblind.append(t)
+                t = next(self.id_big_blind_cc)
+            id_bblind.append(id)
+            self.id_big_blind_cc = cycle(id_bblind)
+
+            id_sblind = []
+            t = next(self.id_small_blind_cc)
+            while t not in id_sblind:
+                id_sblind.append(t)
+                t = next(self.id_small_blind_cc)
+            id_sblind.append(id)
+            self.id_small_blind_cc = cycle(id_sblind)
+
+
         self.id_turn, self.id_big_blind, self.id_small_blind = next(self.id_turn_cc), next(self.id_big_blind_cc), \
                                                                next(self.id_small_blind_cc)
 
@@ -44,6 +98,10 @@ class Game:
         self.is_flop = self.is_turn = self.is_river = False
         self.is_playing = {id: self.money[id] > 0 for id in self.ids}
         self.no_playing = len(list(filter(lambda id: self.money[id] > 0, self.ids)))
+
+        if self.no_playing < 2:
+            return
+
         self.pot = [[self.big_blind * 1.5, {id: True for id in self.ids}]]
 
         self.money[self.id_big_blind] -= self.big_blind
@@ -90,10 +148,15 @@ class Game:
 
 
     def joined_player(self, channel):
-        id = self.cur_players
-        self.cur_players += 1
-        self.player_channels[id] = channel
-        self.ids.append(id)
+        if not self.is_game_on:
+            id = next(self.id_gen)
+            self.cur_players += 1
+            self.player_channels[id] = channel
+            self.ids.append(id)
+        else:
+            self.queue.append(channel)
+            if self.no_playing < 2:
+                self.next_round()
 
 
     def add_nick(self, id, nick):
@@ -115,7 +178,6 @@ class Game:
 
             self.player_channels[id].Send({'action': 'init', 'init_money': self.init_money, 'big_blind': self.big_blind,
                      'player_id': id})
-            self.player_channels[id].Send({'action': 'getcards', 'cards': self.cards[id]})
 
         for id1 in self.ids:  # notify about other players
             for id2 in self.ids:
@@ -127,6 +189,7 @@ class Game:
 
     def start_game(self):
         print('starting game')
+        self.is_game_on = True
 
         for id in self.ids:
             self.player_channels[id].Send({'action': 'startgame'})
@@ -135,6 +198,10 @@ class Game:
     def fold(self, data):
         self.is_playing[data['player_id']] = False
         self.no_folds += 1
+
+        for id in self.ids:
+            self.player_channels[id].Send(data)
+
         if self.cur_players - self.no_folds == 1:
             won_id = None
             for id, f in self.is_playing.items():
@@ -144,12 +211,11 @@ class Game:
             for p in self.pot:
                 for id in self.ids:
                     self.player_channels[id].Send({'action': 'winner', 'player_id': won_id, 'won': p[0]})
-            time.sleep(10)
+
+            time.sleep(4)
             self.next_round()
         else:
             self.pot[-1][1] = self.is_playing.copy()
-            for id in self.ids:
-                self.player_channels[id].Send(data)
             threading.Thread(target=self.next_turn).start()
 
 

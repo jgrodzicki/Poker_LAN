@@ -5,6 +5,7 @@ from time import sleep
 from Game import Game
 
 import sys
+import threading
 
 
 class ClientChannel(PodSixNet.Channel.Channel):
@@ -12,7 +13,7 @@ class ClientChannel(PodSixNet.Channel.Channel):
         print(data)
 
     def Network_fold(self, data):
-        self._server.fold(data)
+        threading.Thread(target=lambda: self._server.fold(data)).start()
 
     def Network_check(self, data):
         self._server.check(data)
@@ -33,23 +34,20 @@ class ClientChannel(PodSixNet.Channel.Channel):
 class PokerServer(PodSixNet.Server.Server):
     channelClass = ClientChannel
 
-    def __init__(self, no_players=6, init_money=1000, big_blind=50, *args, **kwargs):
+    def __init__(self, no_players, init_money, big_blind, *args, **kwargs):
         PodSixNet.Server.Server.__init__(self, *args, **kwargs)
-        self.queue = Game(no_players=no_players)
-        self.game = None
-        self.no_players = no_players
+        self.game = Game(no_players, init_money, big_blind)
 
     def Connected(self, channel, addr):
         print('new connection:', channel)
-        self.queue.joined_player(channel)
-        print(self.queue.cur_players)
+        self.game.joined_player(channel)
+        print(self.game.cur_players)
 
-        if self.queue.cur_players == self.no_players:
-            self.game = self.queue
-            self.queue = None
-
-            self.game.deal_cards()
+        if self.game.cur_players == self.game.no_players and not self.game.is_game_on:
             self.game.game_init()
+            self.game.start_game()
+            self.game.next_round()
+
 
     def fold(self, data):
         self.game.fold(data)
@@ -69,10 +67,6 @@ class PokerServer(PodSixNet.Server.Server):
     def info(self, data):
         self.game.add_nick(data['player_id'], data['nick'])
 
-        if len(self.game.id_to_nick.keys()) == self.game.cur_players:
-            self.game.start_game()
-            self.game.next_round()
-
 
 if __name__ == '__main__':
     print('STARTING SERVER ON LOCALHOST')
@@ -80,7 +74,7 @@ if __name__ == '__main__':
         print('you have to provide server_address port')
         exit()
 
-    no_players, init_money, big_blind = 6, 1000, 50
+    no_players, init_money, big_blind = 2, 1000, 50
     addr, port = sys.argv[1:3]
 
     try:
