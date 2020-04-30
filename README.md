@@ -6,11 +6,12 @@ Quickly writen python code to play poker with homies using Hamachi (minecraft vi
 Maximum number of players: 6
 
 ## Setup
-Clone the repo, run `./setup.sh`
+Clone the repo `git clone https://github.com/jgrodzicki/Poker_LAN.git` and run `./setup.sh`
 #### Run as client
 `python3 poker.py nickname host_address port`
 #### Run as host
 `python3 server.py address port number_of_players init_money big_blind`
+
 where `number_of_players`, `init_money` and `big_blind` are optional, by default equal `6`, `1000`, `50` respectively.
 
 
