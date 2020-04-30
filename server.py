@@ -4,6 +4,8 @@ from time import sleep
 
 from Game import Game
 
+import sys
+
 
 class ClientChannel(PodSixNet.Channel.Channel):
     def Network(self, data):
@@ -31,17 +33,18 @@ class ClientChannel(PodSixNet.Channel.Channel):
 class PokerServer(PodSixNet.Server.Server):
     channelClass = ClientChannel
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, no_players=6, init_money=1000, big_blind=50, *args, **kwargs):
         PodSixNet.Server.Server.__init__(self, *args, **kwargs)
-        self.queue = Game()
+        self.queue = Game(no_players=no_players)
         self.game = None
+        self.no_players = no_players
 
     def Connected(self, channel, addr):
         print('new connection:', channel)
         self.queue.joined_player(channel)
         print(self.queue.cur_players)
 
-        if self.queue.cur_players == 1:
+        if self.queue.cur_players == self.no_players:
             self.game = self.queue
             self.queue = None
 
@@ -71,11 +74,27 @@ class PokerServer(PodSixNet.Server.Server):
             self.game.next_round()
 
 
-print("STARTING SERVER ON LOCALHOST")
-pokerServer = PokerServer(localaddr=('0.0.0.0', 8000))
-try:
-    while True:
-        pokerServer.Pump()
-        sleep(0.01)
-except KeyboardInterrupt:
-    pokerServer.close()
+if __name__=='__main__':
+    print('STARTING SERVER ON LOCALHOST')
+    if len(sys.argv) < 3:
+        print('you have to provide server_address port')
+        exit()
+
+    no_players, init_money, big_blind = 6, 1000, 50
+    addr, port = sys.argv[1:3]
+
+    if len(sys.argv) > 3:
+        no_players = int(sys.argv[3])
+    if len(sys.argv) > 4:
+        init_money = int(sys.argv[4])
+    if len(sys.argv) > 5:
+        big_blind = int(sys.argv[5])
+
+    pokerServer = PokerServer(localaddr=(addr, int(port)), no_players=no_players,
+                              init_money=init_money, big_blind=big_blind)
+    try:
+        while True:
+            pokerServer.Pump()
+            sleep(0.01)
+    except KeyboardInterrupt:
+        pokerServer.close()
