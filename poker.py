@@ -20,7 +20,7 @@ class Poker(ConnectionListener):
         self.width, self.height = 750, 500
         self.card_w, self.card_h = 43, 62
 
-        # initialize pygame shit
+        # initialize pygame
         pygame.init()
         # 2
         # initialize the screen
@@ -47,8 +47,11 @@ class Poker(ConnectionListener):
         self.card1 = self.card2 = None
 
         self.back_card = pygame.image.load(f'images/back.png')
+        self.table_img = pygame.image.load('images/table.png')
+        self.table_img_x, self.table_img_y = self.width//2 - 700//2, 20
 
         self.font = pygame.font.Font('freesansbold.ttf', 16)
+        self.text_font = pygame.font.SysFont('Arial', 12)
         self.nick = nick
 
         self.error_font = pygame.font.Font('freesansbold.ttf', 12)
@@ -64,9 +67,9 @@ class Poker(ConnectionListener):
         self.players_nick = {}
         self.opp_ids = []
         self.opp_money = {}
-        self.players_pos = [(self.width*0.75//5, self.height*3//5), (self.width*0.75//5, self.height*1.5//5),
+        self.players_pos = [(self.width*0.75//5, self.height*2.7//5), (self.width*0.75//5, self.height*1.5//5),
                             (self.width//2, 50), (self.width*4.25//5, self.height*1.5//5),
-                            (self.width*4.25//5, self.height*3//5)]
+                            (self.width*4.25//5, self.height*2.7//5)]
 
         # cards on the table
         self.on_table = [None] * 5
@@ -76,10 +79,10 @@ class Poker(ConnectionListener):
 
         self.fold_b = Button('fold', (self.width - 270, self.height-20), self.screen)
         self.check_b = Button('check', (self.width - 180, self.height-20), self.screen)
-        self.raise_b = Button('raise', (self.width - 90, self.height-20), self.screen)
+        self.raise_b = Button('raise to', (self.width - 90, self.height-20), self.screen)
         self.raise_t = TextField((self.width - 90, self.height - 50), self.screen)
 
-        self.mess = Messages((0, self.height-100), self.screen)
+        self.mess = Messages((0, self.height-115), self.screen)
 
         self.Connect((addr, int(port)))
 
@@ -101,6 +104,7 @@ class Poker(ConnectionListener):
         self.screen.fill(0)
 
         self._handle_actions()
+        self._draw_table()
 
         self._draw_player()
 
@@ -112,7 +116,6 @@ class Poker(ConnectionListener):
 
         self._draw_others()
 
-        self._draw_table()
 
         # update the screen
         pygame.display.update()
@@ -179,6 +182,7 @@ class Poker(ConnectionListener):
         if self.id_small_blind == self.player_id:
             self.money -= self.small_blind
             self.bet = self.small_blind
+            self.check_b.change_txt(f'call {self.big_blind - self.small_blind}')
         else:
             self.opp_money[self.id_small_blind] -= self.small_blind
             self.opp_bet[self.id_small_blind] = self.small_blind
@@ -235,10 +239,11 @@ class Poker(ConnectionListener):
             self.opp_money[id] = data['money']
             self.bet_on_table = data['amount']
             self.raise_t.change_txt(f'{self.bet_on_table+self.big_blind}')
-            self.check_b.change_txt(f'call {self.bet_on_table}')
+            self.check_b.change_txt(f'call {self.bet_on_table - self.bet}')
 
     def Network_winner(self, data):
         id = data['player_id']
+        self.mess.add_text(f'{self.players_nick[id]} won {data["won"]}')
         if id == self.player_id:
             self.money += int(data['won'])
         else:
@@ -317,7 +322,7 @@ class Poker(ConnectionListener):
                         self._call()
                     elif self.raise_b.is_clicked():
                         val = self.raise_t.get_value()
-                        if val < max(self.bet_on_table, self.big_blind)+self.big_blind or val > self.money + self.bet:
+                        if val < self.bet_on_table+self.big_blind or val > self.money + self.bet:
                             self.error_time = time.time()
                         else:
                             self._raise(val)
@@ -390,12 +395,14 @@ class Poker(ConnectionListener):
 
 
     def _draw_table(self):
-        self.screen.blit(self.font.render(f'big blind: {self.big_blind}', True, (150, 150, 150), None),
-                         (0, 0))
+        self.screen.blit(self.text_font.render(f'big blind: {self.big_blind}', True, (255, 255, 255), None),
+                         (self.width-100, 0))
         self.mess.draw()
 
+        self.screen.blit(self.table_img, (self.table_img_x, self.table_img_y))
+
         if self.pot_val is not None:
-            pot_val_label = self.font.render(str(int(self.pot_val)), True, self.money_color, None)
+            pot_val_label = self.font.render(f'pot: {int(self.pot_val)}', True, self.money_color, None)
             pot_val_rect = pot_val_label.get_rect(center=(self.width//2, self.height//2 - 30))
             self.screen.blit(pot_val_label, pot_val_rect)
 

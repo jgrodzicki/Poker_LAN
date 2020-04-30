@@ -267,13 +267,12 @@ class Game:
                                 self._is_flush(c, f, cards), self._is_straight(c, f, cards), self._is_three_of_kind(c, f, cards),
                                 self._is_two_pairs(c, f, cards), self._is_pair(c, f, cards), self._is_high_card(c, f, cards)]
 
-                name = ['straight flush', 'four of the kind', 'full house', 'flush', 'straight',
-                        'three of the kind', 'two pairs', 'pair', 'high card']
                 for i, h in enumerate(pl_hands[id]):
                     if h is not None:
+                        desc = self.get_desc(i, h, self.id_to_nick[id])
                         for ch in self.player_channels:
-                            ch.Send({'action': 'addmsg', 'msg': f'{self.id_to_nick[id]} has {name[i]}: {pl_hands[id][i]}'})
-                        print(f'{self.id_to_nick[id]} has {name[i]}: {pl_hands[id][i]}')
+                            ch.Send({'action': 'addmsg', 'msg': desc})
+                        # print(f'{self.id_to_nick[id]} has {name[i]}: {pl_hands[id][i]}')
                         break
 
         # show cards of anyone who played till the end
@@ -290,6 +289,32 @@ class Game:
             for ch in self.player_channels:
                 for w in winners:
                     ch.Send({'action': 'winner', 'player_id': int(w), 'won': p / len(winners)})
+
+    def get_desc(self, i, pl_hand, nick):
+        name = ['straight flush', 'four of the kind', 'full house', 'flush', 'straight',
+                'three of the kind', 'two pairs', 'pair', 'high card']
+        int_to_fig = {i: str(i+2) for i in range(9)}
+        int_to_fig[9] = 'J'; int_to_fig[10] = 'Q'; int_to_fig[11] = 'K'; int_to_fig[12] = 'A'
+
+        desc = f'{nick} has {name[i]}'
+        if i == 0:
+            desc += f' from {int_to_fig[pl_hand[0]]}'
+        elif i == 1:
+            desc += f' {int_to_fig[pl_hand[0]]} with kicker {int_to_fig[pl_hand[1]]}'
+        elif i == 2:
+            desc += f' {int_to_fig[pl_hand[0]]} and {int_to_fig[pl_hand[1]]}'
+        elif i == 3:
+            desc += f' {", ".join([int_to_fig[c] for c in pl_hand])}'
+        elif i == 4:
+            desc += f' from {int_to_fig[pl_hand[0]]}'
+        elif i == 5:
+            desc += f' {int_to_fig[pl_hand[0]]} and {int_to_fig[pl_hand[1]]}'
+        elif i == 6:
+            desc += f' {int_to_fig[pl_hand[0]]} and {int_to_fig[pl_hand[1]]} with kicker {int_to_fig[pl_hand[2]]}'
+        elif i == 7 or i == 8:
+            desc += f' {int_to_fig[pl_hand[0]]} with kickers {", ".join([int_to_fig[c] for c in pl_hand[1:]])}'
+
+        return desc
 
 
     def get_winners(self, pl_hands):  # pl_hands is a dict id -> hand
