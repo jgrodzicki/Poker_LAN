@@ -30,7 +30,7 @@ class Poker(ConnectionListener):
         # initialize pygame clock
         self.clock = pygame.time.Clock()
 
-        self.nick_color, self.money_color = (100, 100, 100), (255, 255, 0)
+        self.nick_color, self.money_color, self.text_color = (100, 100, 100), (255, 255, 0), (200, 200, 200)
 
         self.is_turn = False
         self.is_playing = True
@@ -273,7 +273,12 @@ class Poker(ConnectionListener):
         if id == self.player_id:
             exit()
         else:
-            pass
+            del self.players_nick[id]
+            del self.opp_money[id]
+            del self.opp_cards_img[id]
+            del self.is_opp_playing[id]
+            del self.is_opp_out[id]
+            self.opp_ids.remove(id)
 
     def _fold(self):
         self.is_turn = False
@@ -317,6 +322,7 @@ class Poker(ConnectionListener):
         for event in pygame.event.get():
             # quit if the quit button was pressed
             if event.type == pygame.QUIT:
+                print('attempt to logout')
                 self.Send({'action': 'logout', 'player_id': self.player_id})
 
             if self.is_turn:
@@ -345,10 +351,10 @@ class Poker(ConnectionListener):
             self.screen.blit(self.card2, (self.width // 2 + 5, self.height - 100))
 
         if self.player_id == self.id_big_blind:
-            self.screen.blit(self.font.render('BB', True, (150, 150, 150), None), (self.width // 2 + 50, self.height - 90))
+            self.screen.blit(self.font.render('BB', True, self.text_color, None), (self.width // 2 + 50, self.height - 90))
 
         if self.player_id == self.id_small_blind:
-            self.screen.blit(self.font.render('SB', True, (150, 150, 150), None), (self.width // 2 + 50, self.height - 90))
+            self.screen.blit(self.font.render('SB', True, self.text_color, None), (self.width // 2 + 50, self.height - 90))
 
         nick_label = self.font.render(self.nick, True, self.nick_color, None)
         nick_rect = nick_label.get_rect(center=(self.width // 2, self.height - 20))
@@ -375,12 +381,12 @@ class Poker(ConnectionListener):
                 self.screen.blit(self.opp_cards_img[id][1], (x+5, y))
 
             if id == self.id_big_blind:
-                self.screen.blit(self.font.render('BB', True, (150, 150, 150), None), (x+50, y+10))
+                self.screen.blit(self.font.render('BB', True, self.text_color, None), (x+50, y+10))
             if id == self.id_small_blind:
-                self.screen.blit(self.font.render('SB', True, (150, 150, 150), None), (x+50, y+10))
+                self.screen.blit(self.font.render('SB', True, self.text_color, None), (x+50, y+10))
 
             if self.id_turn == id:
-                self.screen.blit(self.font.render('turn', True, (100, 100, 100), None), (x+50, y+40))
+                self.screen.blit(self.font.render('turn', True, self.text_color, None), (x+50, y+40))
 
             nick_label = self.font.render(nick, True, self.nick_color, None)
             nick_rect = nick_label.get_rect(center=(x, y+70))

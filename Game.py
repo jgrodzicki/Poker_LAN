@@ -229,8 +229,9 @@ class Game:
 
 
     def logout(self, id):
-        print(f'player {self.id_to_nick[id]} logged out')
+        print(f'player {self.id_to_nick[id]}, id:{id} logged out')
         for id1 in self.ids:
+            print(f'send logout to {id1}')
             self.player_channels[id1].Send({'action': 'logout', 'player_id': id})
         self.cur_players -= 1
 
@@ -264,6 +265,11 @@ class Game:
                 id_sblinds.append(nid)
             nid = next(self.id_small_blind_cc)
         self.id_small_blind_cc = cycle(id_sblinds)
+
+        print(f'players left: {self.id_to_nick.items()}')
+
+        if id == self.id_turn:
+            self.next_turn()
 
 
     def deal_cards(self):

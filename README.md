@@ -19,7 +19,7 @@ where `number_of_players`, `init_money` and `big_blind` are optional, by default
 - when all-in create new pot
 - when only 1 player with money
 - graphics lol
-- logging out before taking action makes 1 player make action twice during that round
+- logging out before taking action makes 1 player make action twice during that round and last player can't log out
 
 #### Possible:
 - join running game
