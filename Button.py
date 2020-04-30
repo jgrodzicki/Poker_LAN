@@ -26,7 +26,8 @@ class Button:
 
     def change_txt(self, txt):
         self.txt = txt
-        self.txt_surf = self.font.render(self.txt, 1, self.fg)
+        self.txt_surf = self.font.render(self.txt, True, self.fg)
+        self.txt_rect = self.txt_surf.get_rect(center=([s//2 for s in self.size]))
 
 
     def draw(self):
