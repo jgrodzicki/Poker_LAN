@@ -224,10 +224,10 @@ class Game:
         for id in self.ids:
             if self.is_playing[id]:
                 pl_cards = self.cards[id]
-                c, f = self.get_colors_and_figs(pl_cards)
-                pl_hands[id] = [self._is_straight_flush(c, f), self._is_four_of_kind(c, f), self._is_full_house(c, f),
-                                self._is_flush(c, f), self._is_straight(c, f), self._is_three_of_kind(c, f),
-                                self._is_two_pairs(c, f), self._is_pair(c, f), self._is_high_card(c, f)]
+                c, f, cards = self.get_colors_figs_cards(pl_cards)
+                pl_hands[id] = [self._is_straight_flush(c, f, cards), self._is_four_of_kind(c, f, cards), self._is_full_house(c, f, cards),
+                                self._is_flush(c, f, cards), self._is_straight(c, f, cards), self._is_three_of_kind(c, f, cards),
+                                self._is_two_pairs(c, f, cards), self._is_pair(c, f, cards), self._is_high_card(c, f, cards)]
 
                 name = ['str flush', '4', 'full', 'flush', 'str', '3', '2x2', '2', 'high']
                 for i, h in enumerate(pl_hands[id]):
@@ -275,26 +275,42 @@ class Game:
 
 
 
-    def get_colors_and_figs(self, pl_cards):
+    def get_colors_figs_cards(self, pl_cards):
         fig_to_no = {str(i): i-2 for i in range(2, 11)}
         fig_to_no['J'] = 9; fig_to_no['Q'] = 10; fig_to_no['K'] = 11; fig_to_no['A'] = 12
         col_to_no = {c: i for i, c in enumerate(['H', 'D', 'S', 'C'])}
         colors = [0] * 4
         figs = [0] * 13
+        cards = []
+
         for c in pl_cards + self.flop_cards + [self.turn_card] + [self.river_card]:
             fg = fig_to_no[c[:-1]]
             cl = col_to_no[c[-1]]
             colors[cl] += 1
             figs[fg] += 1
-        return colors, figs
+            cards.append([cl, fg])
 
-    def _is_straight_flush(self, colors, figs):
-        straight, flush = self._is_straight(colors, figs), self._is_flush(colors, figs)
+        return colors, figs, cards
+
+    def _is_straight_flush(self, colors, figs, cards):
+        straight, flush = self._is_straight(colors, figs, cards), self._is_flush(colors, figs, cards)
+        cnt = [0]*4  # count continuous of each color
+
         if straight is not None and flush is not None:
-            return straight  # not working
+            for i in range(13):
+                occured = [0] * 4
+                for c in cards:
+
+                    if c[1] != i:
+                        continue
+                    occured[c[0]] = 1
+                for j in range(4):
+                    cnt[j] = occured[j]*cnt[j] + occured[j]
+                    if cnt[j] == 5:
+                        return list(range(i, i-5, -1))
         return None
 
-    def _is_four_of_kind(self, colors, figs):
+    def _is_four_of_kind(self, colors, figs, cards):
         for i, n in enumerate(figs):
             if n == 4:
                 res = [i]
@@ -302,7 +318,7 @@ class Game:
                 return res
         return None
 
-    def _is_full_house(self, colors, figs):
+    def _is_full_house(self, colors, figs, cards):
         res = [None, None]
         for i, n in enumerate(figs):
             if n == 3:
@@ -315,17 +331,20 @@ class Game:
         return None
 
 
-    def _is_flush(self, colors, figs):
+    def _is_flush(self, colors, figs, cards):
         if any(list(map(lambda x: x == 5, colors))):
-            return self._find_best_high(colors, figs, [], 5)  # not working
+            idx = colors.index(5)
+            res = []
+            for c in cards:
+                if c[1] == idx:
+                    res.append(c[0])
+            return sorted(res, reverse=True)
         return None
 
-    def _is_straight(self, colors, figs):
+    def _is_straight(self, colors, figs, cards):
         cnt = 0
         for i, n in enumerate(figs):
-            if n > 1:
-                return None
-            if n == 1:
+            if n >= 1:
                 cnt += 1
             if cnt == 5:
                 return list(range(i, i-5, -1))
@@ -333,7 +352,7 @@ class Game:
                 return None
 
 
-    def _is_three_of_kind(self, colors, figs):
+    def _is_three_of_kind(self, colors, figs, cards):
         res = [None]
         for i, n in enumerate(figs):
             if n == 3:
@@ -345,7 +364,7 @@ class Game:
         res.extend(self._find_best_high(colors, figs, res, 2))
         return res
 
-    def _is_two_pairs(self, colors, figs):
+    def _is_two_pairs(self, colors, figs, cards):
         res = []
         for i, n in enumerate(figs):
             if n == 2:
@@ -358,7 +377,7 @@ class Game:
         res.extend(self._find_best_high(colors, figs, res, 1))
         return res
 
-    def _is_pair(self, colors, figs):  # pair, 3 best other
+    def _is_pair(self, colors, figs, cards):  # pair, 3 best other
         res = [None]
         for i, n in enumerate(figs):
             if n == 2:
@@ -370,7 +389,7 @@ class Game:
         res.extend(self._find_best_high(colors, figs, [res[0]], 3))
         return res
 
-    def _is_high_card(self, colors, figs):  # 5 cards
+    def _is_high_card(self, colors, figs, cards):  # 5 cards
         return self._find_best_high(colors, figs, [], 5)
 
     def _find_best_high(self, colors, figs, without, to_ret):
@@ -380,3 +399,4 @@ class Game:
                 continue
             res.extend([i] * n)
         return res[::-1][:to_ret]
+
