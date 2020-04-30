@@ -10,7 +10,7 @@ class Game:
     def __init__(self, no_players=6, init_money=1000, big_blind=50):
         self.no_players = 0
         self.player_nicks = [None] * no_players
-        self.player_channels = []
+        self.player_channels = {}
         self.init_money = init_money
         self.big_blind = big_blind
         self.cur_players = 0
@@ -68,39 +68,38 @@ class Game:
 
         print(self.id_big_blind, self.id_small_blind)
 
-        for i, ch in enumerate(self.player_channels):
-            id = self.ids[i]
-            ch.Send({'action': 'nextround', 'id_big_blind': self.id_big_blind, 'id_small_blind': self.id_small_blind, 'pot': self.pot})
-            ch.Send({'action': 'getcards', 'cards': self.cards[id]})
-            ch.Send({'action': 'nextturn', 'player_id_turn': self.id_turn, 'pot': self.pot})
+        for id in self.ids:
+            self.player_channels[id].Send({'action': 'nextround', 'id_big_blind': self.id_big_blind, 'id_small_blind': self.id_small_blind, 'pot': self.pot})
+            self.player_channels[id].Send({'action': 'getcards', 'cards': self.cards[id]})
+            self.player_channels[id].Send({'action': 'nextturn', 'player_id_turn': self.id_turn, 'pot': self.pot})
 
     def flop(self):
         self.is_flop = True
-        for ch in self.player_channels:
-            ch.Send({'action': 'flop', 'cards': self.flop_cards})
+        for id in self.ids:
+            self.player_channels[id].Send({'action': 'flop', 'cards': self.flop_cards})
 
     def turn(self):
         self.is_turn = True
-        for ch in self.player_channels:
-            ch.Send({'action': 'turn', 'card': self.turn_card})
+        for id in self.ids:
+            self.player_channels[id].Send({'action': 'turn', 'card': self.turn_card})
 
     def river(self):
         self.is_river = True
-        for ch in self.player_channels:
-            ch.Send({'action': 'river', 'card': self.river_card})
+        for id in self.ids:
+            self.player_channels[id].Send({'action': 'river', 'card': self.river_card})
 
 
     def joined_player(self, channel):
         id = self.cur_players
         self.cur_players += 1
-        self.player_channels.append(channel)
+        self.player_channels[id] = channel
         self.ids.append(id)
 
 
     def add_nick(self, id, nick):
         self.id_to_nick[id] = nick
-        for ch in self.player_channels:
-            ch.Send({'action': 'addnick', 'player_id': id, 'nick': nick})
+        for id1 in self.ids:
+            self.player_channels[id1].Send({'action': 'addnick', 'player_id': id, 'nick': nick})
 
 
     def game_init(self):
@@ -109,29 +108,28 @@ class Game:
         self.id_big_blind_cc = cycle(self.ids[1:] + self.ids[:1])
         self.id_small_blind_cc = cycle(self.ids)
 
-        for i, ch in enumerate(self.player_channels):
-            id = self.ids[i]
+        for id in self.ids:
             self.no_playing += 1
             self.is_playing[id] = True
             self.money[id] = self.init_money
 
-            ch.Send({'action': 'init', 'init_money': self.init_money, 'big_blind': self.big_blind,
+            self.player_channels[id].Send({'action': 'init', 'init_money': self.init_money, 'big_blind': self.big_blind,
                      'player_id': id})
-            ch.Send({'action': 'getcards', 'cards': self.cards[id]})
+            self.player_channels[id].Send({'action': 'getcards', 'cards': self.cards[id]})
 
-        for i, ch in enumerate(self.player_channels):  # notify about other players
-            j = (i+1) % self.cur_players
-            while j != i:
-                print(f'sending to {i} about {j}')
-                ch.Send({'action': 'addplayer', 'player_id': j, 'money': self.init_money})
-                j = (j+1) % self.cur_players
+        for id1 in self.ids:  # notify about other players
+            for id2 in self.ids:
+                if id1 == id2:
+                    continue
+                print(f'sending to {id1} about {id2}')
+                self.player_channels[id1].Send({'action': 'addplayer', 'player_id': id2, 'money': self.init_money})
 
 
     def start_game(self):
         print('starting game')
 
-        for i, ch in enumerate(self.player_channels):
-            ch.Send({'action': 'startgame'})
+        for id in self.ids:
+            self.player_channels[id].Send({'action': 'startgame'})
 
 
     def fold(self, data):
@@ -144,20 +142,20 @@ class Game:
                     won_id = id
                     break
             for p in self.pot:
-                for ch in self.player_channels:
-                    ch.Send({'action': 'winner', 'player_id': won_id, 'won': p[0]})
+                for id in self.ids:
+                    self.player_channels[id].Send({'action': 'winner', 'player_id': won_id, 'won': p[0]})
             time.sleep(10)
             self.next_round()
         else:
             self.pot[-1][1] = self.is_playing.copy()
-            for ch in self.player_channels:
-                ch.Send(data)
+            for id in self.ids:
+                self.player_channels[id].Send(data)
             threading.Thread(target=self.next_turn).start()
 
 
     def check(self, data):
-        for ch in self.player_channels:
-            ch.Send(data)
+        for id in self.ids:
+            self.player_channels[id].Send(data)
         threading.Thread(target=self.next_turn).start()
 
 
@@ -167,9 +165,9 @@ class Game:
         self.is_allin[id] = data['allin']
         self.pot[-1][0] += data['extra_to_pot']
 
-        for ch in self.player_channels:
-            ch.Send(data)
-            ch.Send({'action': 'updatepot', 'pot_val': self.pot[-1][0]})
+        for id in self.ids:
+            self.player_channels[id].Send(data)
+            self.player_channels[id].Send({'action': 'updatepot', 'pot_val': self.pot[-1][0]})
         threading.Thread(target=self.next_turn).start()
 
 
@@ -179,9 +177,9 @@ class Game:
         self.money[id] = data['money']
         self.is_allin[id] = data['allin']
         self.pot[-1][0] += data['extra_to_pot']
-        for ch in self.player_channels:
-            ch.Send(data)
-            ch.Send({'action': 'updatepot', 'pot_val': self.pot[-1][0]})
+        for id in self.ids:
+            self.player_channels[id].Send(data)
+            self.player_channels[id].Send({'action': 'updatepot', 'pot_val': self.pot[-1][0]})
         threading.Thread(target=self.next_turn).start()
 
     def next_turn(self):
@@ -226,18 +224,46 @@ class Game:
         while not self.is_playing[self.id_turn] or self.is_allin[self.id_turn]:
             self.id_turn = next(self.id_turn_cc)
 
-        for ch in self.player_channels:
-            ch.Send({'action': 'nextturn', 'player_id_turn': self.id_turn, 'pot': self.pot})
+        for id in self.ids:
+            self.player_channels[id].Send({'action': 'nextturn', 'player_id_turn': self.id_turn, 'pot': self.pot})
 
 
     def logout(self, id):
-        for ch in self.player_channels:
-            ch.Send({'action': 'logout', 'player_id': id})
-        self.player_channels = self.player_channels[:id] + self.player_channels[id+1:]
+        print(f'player {self.id_to_nick[id]} logged out')
+        for id1 in self.ids:
+            self.player_channels[id1].Send({'action': 'logout', 'player_id': id})
         self.cur_players -= 1
+
         del self.money[id]
         del self.cards[id]
         del self.is_playing[id]
+        del self.id_to_nick[id]
+        del self.player_channels[id]
+        self.ids.remove(id)
+
+        id_turns = []
+        nid = next(self.id_turn_cc)
+        while nid not in id_turns:
+            if nid != id:
+                id_turns.append(nid)
+            nid = next(self.id_turn_cc)
+        self.id_turn_cc = cycle(id_turns)
+
+        id_bblinds = []
+        nid = next(self.id_big_blind_cc)
+        while nid not in id_bblinds:
+            if nid != id:
+                id_bblinds.append(nid)
+            nid = next(self.id_big_blind_cc)
+        self.id_big_blind_cc = cycle(id_bblinds)
+
+        id_sblinds = []
+        nid = next(self.id_small_blind_cc)
+        while nid not in id_sblinds:
+            if nid != id:
+                id_sblinds.append(nid)
+            nid = next(self.id_small_blind_cc)
+        self.id_small_blind_cc = cycle(id_sblinds)
 
 
     def deal_cards(self):
@@ -255,8 +281,8 @@ class Game:
                               f'{get_fig[c1//4]}{get_color[c1%4]}']
 
     def pot_to_winners(self):
-        for ch in self.player_channels:
-            ch.Send({'action': 'clearmsg'})
+        for id in self.ids:
+            self.player_channels[id].Send({'action': 'clearmsg'})
 
         pl_hands = {}
         for id in self.ids:
@@ -270,25 +296,25 @@ class Game:
                 for i, h in enumerate(pl_hands[id]):
                     if h is not None:
                         desc = self.get_desc(i, h, self.id_to_nick[id])
-                        for ch in self.player_channels:
-                            ch.Send({'action': 'addmsg', 'msg': desc})
+                        for id in self.ids:
+                            self.player_channels[id].Send({'action': 'addmsg', 'msg': desc})
                         # print(f'{self.id_to_nick[id]} has {name[i]}: {pl_hands[id][i]}')
                         break
 
         # show cards of anyone who played till the end
         for id, is_p in self.is_playing.items():
             if is_p:
-                for ch in self.player_channels:
-                    ch.Send({'action': 'showcards', 'player_id': id, 'cards': self.cards[id]})
+                for id1 in self.ids:
+                    self.player_channels[id1].Send({'action': 'showcards', 'player_id': id, 'cards': self.cards[id]})
 
         for p, played in self.pot:
             winners = self.get_winners(pl_hands)
             for w in winners:
                 self.money[int(w)] += p/len(winners)
 
-            for ch in self.player_channels:
+            for id in self.ids:
                 for w in winners:
-                    ch.Send({'action': 'winner', 'player_id': int(w), 'won': p / len(winners)})
+                    self.player_channels[id].Send({'action': 'winner', 'player_id': int(w), 'won': p / len(winners)})
 
     def get_desc(self, i, pl_hand, nick):
         name = ['straight flush', 'four of the kind', 'full house', 'flush', 'straight',

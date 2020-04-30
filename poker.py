@@ -128,6 +128,8 @@ class Poker(ConnectionListener):
         self.player_id = data['player_id']
         self.money = data['init_money']
 
+        print(f'my id: {self.player_id}')
+
         # send nickname
         self.Send({'action': 'info', 'player_id': self.player_id, 'nick': self.nick})
 
@@ -146,6 +148,7 @@ class Poker(ConnectionListener):
 
     def Network_addnick(self, data):
         self.players_nick[data['player_id']] = data['nick']
+        print(f'added nick {data["nick"]} for id {data["player_id"]}')
 
     def Network_startgame(self, data):
         self.is_waiting_to_start = False
@@ -243,7 +246,7 @@ class Poker(ConnectionListener):
 
     def Network_winner(self, data):
         id = data['player_id']
-        self.mess.add_text(f'{self.players_nick[id]} won {data["won"]}')
+        self.mess.add_text(f'{self.players_nick[id]} won {int(data["won"])}')
         if id == self.player_id:
             self.money += int(data['won'])
         else:
@@ -265,8 +268,12 @@ class Poker(ConnectionListener):
         self.mess.add_text(data['msg'])
 
     def Network_logout(self, data):
-        pass
-
+        id = data['player_id']
+        print(f'{self.players_nick[id]} logged out')
+        if id == self.player_id:
+            exit()
+        else:
+            pass
 
     def _fold(self):
         self.is_turn = False
@@ -310,7 +317,7 @@ class Poker(ConnectionListener):
         for event in pygame.event.get():
             # quit if the quit button was pressed
             if event.type == pygame.QUIT:
-                exit()
+                self.Send({'action': 'logout', 'player_id': self.player_id})
 
             if self.is_turn:
                 if event.type == pygame.MOUSEBUTTONDOWN:
