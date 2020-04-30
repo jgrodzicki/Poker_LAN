@@ -8,6 +8,7 @@ import time
 
 from Button import Button
 from TextField import TextField
+from Messages import Messages
 
 from collections import defaultdict
 
@@ -77,6 +78,8 @@ class Poker(ConnectionListener):
         self.check_b = Button('check', (self.width - 180, self.height-20), self.screen)
         self.raise_b = Button('raise', (self.width - 90, self.height-20), self.screen)
         self.raise_t = TextField((self.width - 90, self.height - 50), self.screen)
+
+        self.mess = Messages((0, self.height-100), self.screen)
 
         self.Connect((addr, int(port)))
 
@@ -250,6 +253,12 @@ class Poker(ConnectionListener):
     def Network_updatepot(self, data):
         self.pot_val = data['pot_val']
 
+    def Network_clearmsg(self, data):
+        self.mess.clear()
+
+    def Network_addmsg(self, data):
+        self.mess.add_text(data['msg'])
+
     def Network_logout(self, data):
         pass
 
@@ -383,6 +392,7 @@ class Poker(ConnectionListener):
     def _draw_table(self):
         self.screen.blit(self.font.render(f'big blind: {self.big_blind}', True, (150, 150, 150), None),
                          (0, 0))
+        self.mess.draw()
 
         if self.pot_val is not None:
             pot_val_label = self.font.render(str(int(self.pot_val)), True, self.money_color, None)

@@ -255,6 +255,9 @@ class Game:
                               f'{get_fig[c1//4]}{get_color[c1%4]}']
 
     def pot_to_winners(self):
+        for ch in self.player_channels:
+            ch.Send({'action': 'clearmsg'})
+
         pl_hands = {}
         for id in self.ids:
             if self.is_playing[id]:
@@ -268,6 +271,8 @@ class Game:
                         'three of the kind', 'two pairs', 'pair', 'high card']
                 for i, h in enumerate(pl_hands[id]):
                     if h is not None:
+                        for ch in self.player_channels:
+                            ch.Send({'action': 'addmsg', 'msg': f'{self.id_to_nick[id]} has {name[i]}: {pl_hands[id][i]}'})
                         print(f'{self.id_to_nick[id]} has {name[i]}: {pl_hands[id][i]}')
                         break
 

@@ -41,7 +41,7 @@ class PokerServer(PodSixNet.Server.Server):
         self.queue.joined_player(channel)
         print(self.queue.cur_players)
 
-        if self.queue.cur_players == 3:
+        if self.queue.cur_players == 1:
             self.game = self.queue
             self.queue = None
 
