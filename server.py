@@ -74,7 +74,7 @@ class PokerServer(PodSixNet.Server.Server):
             self.game.next_round()
 
 
-if __name__=='__main__':
+if __name__ == '__main__':
     print('STARTING SERVER ON LOCALHOST')
     if len(sys.argv) < 3:
         print('you have to provide server_address port')
@@ -83,12 +83,25 @@ if __name__=='__main__':
     no_players, init_money, big_blind = 6, 1000, 50
     addr, port = sys.argv[1:3]
 
-    if len(sys.argv) > 3:
-        no_players = int(sys.argv[3])
-    if len(sys.argv) > 4:
-        init_money = int(sys.argv[4])
-    if len(sys.argv) > 5:
-        big_blind = int(sys.argv[5])
+    try:
+        if len(sys.argv) > 3:
+            no_players = int(sys.argv[3])
+            if no_players > 6 or no_players < 2:
+                print('number of players was to be at least 2 and not greater than 6')
+                exit()
+        if len(sys.argv) > 4:
+            init_money = int(sys.argv[4])
+            if init_money < 0:
+                print('money has to be greater than 0 you dumbass')
+                exit()
+        if len(sys.argv) > 5:
+            big_blind = int(sys.argv[5])
+            if big_blind < init_money:
+                print('seriously big blind greater than init money?')
+                exit()
+    except ValueError:
+        print('cannot convert values to integers')
+        exit()
 
     pokerServer = PokerServer(localaddr=(addr, int(port)), no_players=no_players,
                               init_money=init_money, big_blind=big_blind)
