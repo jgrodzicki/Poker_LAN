@@ -39,16 +39,26 @@ class Game:
     def next_round(self):
         self.id_turn, self.id_big_blind, self.id_small_blind = next(self.id_turn_cc), next(self.id_big_blind_cc), \
                                                                next(self.id_small_blind_cc)
+
         self.deal_cards()
         self.is_flop = self.is_turn = self.is_river = False
         self.is_playing = {id: self.money[id] > 0 for id in self.ids}
-        self.no_playing = self.cur_players
+        self.no_playing = len(list(filter(lambda id: self.money[id] > 0, self.ids)))
         self.pot = [[self.big_blind * 1.5, {id: True for id in self.ids}]]
 
         self.money[self.id_big_blind] -= self.big_blind
         self.money[self.id_small_blind] -= self.big_blind//2
 
         self.is_allin = {id: False for id in self.ids}
+
+        while not self.is_playing[self.id_turn]:
+            self.id_turn = next(self.id_turn_cc)
+
+        while not self.is_playing[self.id_big_blind]:
+            self.id_big_blind = next(self.id_big_blind_cc)
+
+        while not self.is_playing[self.id_small_blind]:
+            self.id_small_blind = next(self.id_big_blind_cc)
 
         print(f'id bb: {self.id_big_blind}, id sm: {self.id_small_blind}')
 
@@ -112,6 +122,7 @@ class Game:
         for i, ch in enumerate(self.player_channels):  # notify about other players
             j = (i+1) % self.cur_players
             while j != i:
+                print(f'sending to {i} about {j}')
                 ch.Send({'action': 'addplayer', 'player_id': j, 'money': self.init_money})
                 j = (j+1) % self.cur_players
 
@@ -174,46 +185,30 @@ class Game:
         threading.Thread(target=self.next_turn).start()
 
     def next_turn(self):
-        print(f'no_playing: {self.no_playing}, allined: {len(list(filter(lambda id: self.is_allin[id], self.ids)))}')
+        self.its += 1
 
-        if self.no_playing == len(list(filter(lambda id: self.is_allin[id], self.ids))):
-            if not self.is_flop:
-                print(1)
-                threading.Thread(target=self.flop).start()
-                time.sleep(4)
-            if not self.is_turn:
-                print(2)
-                threading.Thread(target=self.turn).start()
-                time.sleep(4)
-            if not self.is_river:
-                print(3)
-                threading.Thread(target=self.river).start()
-                time.sleep(4)
-            else:
-                print(4)
+        print(f'its: {self.its}, no_playing: {self.no_playing}')
+        if self.its == self.no_playing:
+            self.id_turn_cc = cycle(self.ids[self.id_small_blind:] + self.ids[:self.id_small_blind])
+
+            self.its = 0
+            self.no_playing = len(list(filter(lambda id: self.is_playing[id] and not self.is_allin[id], self.ids)))
+
+            if self.no_playing == 0:
+                if not self.is_flop:
+                    self.flop()
+                    time.sleep(4)
+                if not self.is_turn:
+                    self.turn()
+                    time.sleep(4)
+                if not self.is_river:
+                    self.river()
+                    time.sleep(4)
+
                 self.pot_to_winners()
                 time.sleep(8)
                 self.next_round()
-
-        print('next turn')
-        self.id_turn = next(self.id_turn_cc)
-
-        # while not self.is_playing[self.id_turn] or self.is_allin[self.id_turn]:
-        while not self.is_playing[self.id_turn]:
-            self.id_turn = next(self.id_turn_cc)
-
-        self.its += 1
-        print(f'its: {self.its}\nturn: {self.id_turn}, no_pl: {self.no_playing}')
-
-        if self.its == self.no_playing:
-            self.id_turn_cc = cycle(self.ids[self.id_small_blind:] + self.ids[:self.id_small_blind])
-            self.id_turn = next(self.id_turn_cc)
-            while not self.is_playing[self.id_turn]:
-                self.id_turn = next(self.id_turn_cc)
-
-            self.its = 0
-            self.no_playing = len(list(filter(lambda id: self.is_playing[id], self.ids)))
-            # self.no_playing = len(list(filter(lambda id: self.is_playing[id] and not self.is_allin[id], self.ids)))
+                return
 
             if not self.is_flop:
                 self.flop()
@@ -225,6 +220,11 @@ class Game:
                 self.pot_to_winners()
                 time.sleep(8)
                 self.next_round()
+                return
+
+        self.id_turn = next(self.id_turn_cc)
+        while not self.is_playing[self.id_turn] or self.is_allin[self.id_turn]:
+            self.id_turn = next(self.id_turn_cc)
 
         for ch in self.player_channels:
             ch.Send({'action': 'nextturn', 'player_id_turn': self.id_turn, 'pot': self.pot})

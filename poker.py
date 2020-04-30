@@ -9,6 +9,8 @@ import time
 from Button import Button
 from TextField import TextField
 
+from collections import defaultdict
+
 
 class Poker(ConnectionListener):
 
@@ -33,6 +35,7 @@ class Poker(ConnectionListener):
         self.is_playing = True
         self.is_waiting_to_start = True
         self.player_id = None
+        self.is_out = False
 
         self.pot_val = None
 
@@ -52,6 +55,7 @@ class Poker(ConnectionListener):
         self.error_time = 0
 
         # other players
+        self.is_opp_out = defaultdict(bool)  # True when out of money, default to False
         self.opp_cards_img = {}
         self.is_opp_playing = {}
         self.id_turn = None
@@ -132,6 +136,7 @@ class Poker(ConnectionListener):
         self.opp_bet[id] = 0
         self.is_opp_playing[id] = True
         self.opp_cards_img[id] = [pygame.image.load('images/back.png'), pygame.image.load('images/back.png')]
+        print(f'adding player with id: {id}')
 
     def Network_addnick(self, data):
         self.players_nick[data['player_id']] = data['nick']
@@ -145,13 +150,15 @@ class Poker(ConnectionListener):
 
         self.opp_cards_img = {id: [pygame.image.load('images/back.png'), pygame.image.load('images/back.png')]
                               for id in self.opp_ids}
-
+        self.is_opp_out = {id: self.opp_money[id] == 0 for id in self.opp_ids}
         self.pot_val = self.big_blind * 1.5
 
         self.bet = 0
         self.bet_on_table = self.big_blind
 
-        self.is_opp_playing = {id: True for id in self.opp_ids}
+        self.is_turn = False
+        self.is_out = self.money == 0
+
         self.on_table = [None] * 5
         self.bet_on_table = self.big_blind
 
@@ -172,6 +179,8 @@ class Poker(ConnectionListener):
         else:
             self.opp_money[self.id_small_blind] -= self.small_blind
             self.opp_bet[self.id_small_blind] = self.small_blind
+        self.is_opp_playing = {id: self.opp_money[id] > 0 for id in self.opp_ids}
+
 
     def Network_nextturn(self, data):
         if self.player_id == data['player_id_turn']:
@@ -310,8 +319,9 @@ class Poker(ConnectionListener):
                     self.raise_t.update(event.key)
 
     def _draw_player(self):
-        self.screen.blit(self.card1, (self.width // 2 - self.card_w - 5, self.height - 100))
-        self.screen.blit(self.card2, (self.width // 2 + 5, self.height - 100))
+        if not self.is_out:
+            self.screen.blit(self.card1, (self.width // 2 - self.card_w - 5, self.height - 100))
+            self.screen.blit(self.card2, (self.width // 2 + 5, self.height - 100))
 
         if self.player_id == self.id_big_blind:
             self.screen.blit(self.font.render('BB', True, (150, 150, 150), None), (self.width // 2 + 50, self.height - 90))
@@ -339,8 +349,9 @@ class Poker(ConnectionListener):
 
             x, y = self.players_pos[i]
 
-            self.screen.blit(self.opp_cards_img[id][0], (x-self.card_w-5, y))
-            self.screen.blit(self.opp_cards_img[id][1], (x+5, y))
+            if not self.is_opp_out[id]:
+                self.screen.blit(self.opp_cards_img[id][0], (x-self.card_w-5, y))
+                self.screen.blit(self.opp_cards_img[id][1], (x+5, y))
 
             if id == self.id_big_blind:
                 self.screen.blit(self.font.render('BB', True, (150, 150, 150), None), (x+50, y+10))

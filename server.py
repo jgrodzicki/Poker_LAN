@@ -25,7 +25,6 @@ class ClientChannel(PodSixNet.Channel.Channel):
         self._server.logout(data)
 
     def Network_info(self, data):
-        print('info1')
         self._server.info(data)
 
 
@@ -65,11 +64,9 @@ class PokerServer(PodSixNet.Server.Server):
         self.game.logout(data['player_id'])
 
     def info(self, data):
-        print('info')
         self.game.add_nick(data['player_id'], data['nick'])
 
         if len(self.game.id_to_nick.keys()) == self.game.cur_players:
-            print('here')
             self.game.start_game()
             self.game.next_round()
 
