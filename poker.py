@@ -46,7 +46,6 @@ class Poker(ConnectionListener):
 
         self.font = pygame.font.Font('freesansbold.ttf', 16)
         self.nick = nick
-        # self.nick = self.font.render(nick, True, nick_color, None)
 
         self.error_font = pygame.font.Font('freesansbold.ttf', 12)
         self.error_raise_msg = self.error_font.render('INVALID VALUE', True, (255, 0, 0), (255, 255, 255))
