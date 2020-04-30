@@ -10,6 +10,7 @@ Work in progress...
 - graphics
 
 ### Possible:
+- chats with info about winning hand
 - implement logouts
 - join running game
 - game parameters from command line
