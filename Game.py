@@ -22,6 +22,7 @@ class Game:
         self.id_turn = self.id_big_blind = self.id_small_blind = None
         self.id_turn_cc = self.id_big_blind_cc = self.id_small_blind_cc = None  # cycles
         self.is_playing = {}
+        self.is_allin = {}
         self.no_playing = 0
         self.no_folds = 0
         self.money = {}
@@ -40,12 +41,18 @@ class Game:
                                                                next(self.id_small_blind_cc)
         self.deal_cards()
         self.is_flop = self.is_turn = self.is_river = False
-        self.is_playing = {id: True for id in self.ids}
+        self.is_playing = {id: self.money[id] > 0 for id in self.ids}
         self.no_playing = self.cur_players
         self.pot = [[self.big_blind * 1.5, {id: True for id in self.ids}]]
 
         self.money[self.id_big_blind] -= self.big_blind
         self.money[self.id_small_blind] -= self.big_blind//2
+
+        self.is_allin = {id: False for id in self.ids}
+
+        print(f'id bb: {self.id_big_blind}, id sm: {self.id_small_blind}')
+
+        self.its = 0
 
         self.no_folds = 0
 
@@ -89,7 +96,7 @@ class Game:
     def game_init(self):
         print('game_init')
         self.id_turn_cc = cycle(self.ids[2:] + self.ids[:2])
-        self.id_big_blind_cc = cycle(self.ids[1:] + self.ids[1:])
+        self.id_big_blind_cc = cycle(self.ids[1:] + self.ids[:1])
         self.id_small_blind_cc = cycle(self.ids)
 
         for i, ch in enumerate(self.player_channels):
@@ -144,8 +151,11 @@ class Game:
 
 
     def call(self, data):
-        self.money[data['player_id']] = data['money']
+        id = data['player_id']
+        self.money[id] = data['money']
+        self.is_allin[id] = data['allin']
         self.pot[-1][0] += data['extra_to_pot']
+
         for ch in self.player_channels:
             ch.Send(data)
             ch.Send({'action': 'updatepot', 'pot_val': self.pot[-1][0]})
@@ -155,6 +165,7 @@ class Game:
     def raise_(self, data):
         self.its = 0
         self.money[data['player_id']] = data['money']
+        self.is_allin[id] = data['allin']
         self.pot[-1][0] += data['extra_to_pot']
         for ch in self.player_channels:
             ch.Send(data)
@@ -165,7 +176,7 @@ class Game:
         print('next turn')
         self.id_turn = next(self.id_turn_cc)
 
-        while not self.is_playing[self.id_turn]:
+        while not self.is_playing[self.id_turn] or self.is_allin[self.id_turn]:
             self.id_turn = next(self.id_turn_cc)
 
         self.its += 1
@@ -229,10 +240,12 @@ class Game:
                                 self._is_flush(c, f, cards), self._is_straight(c, f, cards), self._is_three_of_kind(c, f, cards),
                                 self._is_two_pairs(c, f, cards), self._is_pair(c, f, cards), self._is_high_card(c, f, cards)]
 
-                name = ['str flush', '4', 'full', 'flush', 'str', '3', '2x2', '2', 'high']
+                name = ['straight flush', 'four of the kind', 'full house', 'flush', 'straight',
+                        'three of the kind', 'two pairs', 'pair', 'high card']
                 for i, h in enumerate(pl_hands[id]):
                     if h is not None:
-                        print(f'{self.id_to_nick[id]} has {name[i]}')
+                        print(f'{self.id_to_nick[id]} has {name[i]}: {pl_hands[id][i]}')
+                        break
 
         # show cards of anyone who played till the end
         for id, is_p in self.is_playing.items():

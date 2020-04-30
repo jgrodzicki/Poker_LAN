@@ -157,6 +157,7 @@ class Poker(ConnectionListener):
         self.bet_on_table = self.big_blind
 
         self.check_b.change_txt(f'call {self.big_blind}')
+        self.raise_t.change_txt(f'{2*self.big_blind}')
 
         if self.id_big_blind == self.player_id:
             self.money -= self.big_blind
@@ -184,16 +185,19 @@ class Poker(ConnectionListener):
         self.bet = self.bet_on_table = 0
         self.opp_bet = {id: 0 for id in self.opp_ids}
         self.on_table[:3] = list(map(lambda c: pygame.image.load(f'images/{c}.png'), data['cards']))
+        self.raise_t.change_txt(f'{2*self.big_blind}')
 
     def Network_turn(self, data):
         self.bet = self.bet_on_table = 0
         self.opp_bet = {id: 0 for id in self.opp_ids}
         self.on_table[3] = pygame.image.load(f'images/{data["card"]}.png')
+        self.raise_t.change_txt(f'{2*self.big_blind}')
 
     def Network_river(self, data):
         self.bet = self.bet_on_table = 0
         self.opp_bet = {id: 0 for id in self.opp_ids}
         self.on_table[4] = pygame.image.load(f'images/{data["card"]}.png')
+        self.raise_t.change_txt(f'{2*self.big_blind}')
 
     def Network_fold(self, data):
         id = data['player_id']
@@ -219,6 +223,7 @@ class Poker(ConnectionListener):
         if id != self.player_id:
             self.opp_money[id] = data['money']
             self.bet_on_table = data['amount']
+            self.raise_t.change_txt(f'{self.bet_on_table+self.big_blind}')
             self.check_b.change_txt(f'call {self.bet_on_table}')
 
     def Network_winner(self, data):
@@ -295,7 +300,7 @@ class Poker(ConnectionListener):
                         self._call()
                     elif self.raise_b.is_clicked():
                         val = self.raise_t.get_value()
-                        if val < self.bet_on_table+self.big_blind or val > self.money:
+                        if val < max(self.bet_on_table, self.big_blind)+self.big_blind or val > self.money + self.bet:
                             self.error_time = time.time()
                         else:
                             self._raise(val)

@@ -37,6 +37,11 @@ class TextField:
         self.surface.blit(self.txt_surf, self.txt_rect)
         self.screen.blit(self.surface, self.rect)
 
+    def change_txt(self, txt):
+        self.txt = txt
+        self.txt_surf = self.font.render(self.txt, True, (50, 50, 50))
+        self.txt_rect = self.txt_surf.get_rect(center=([s // 2 for s in self.size]))
+
 
     def update(self, button):
         if not self.is_active:
@@ -64,5 +69,5 @@ class TextField:
         elif button == pygame.K_BACKSPACE:
             self.txt = self.txt[:-1]
 
-        self.txt_surf = self.font.render(self.txt, 1, (150, 150, 150))
+        self.txt_surf = self.font.render(self.txt, True, (50, 50, 50))
         self.txt_rect = self.txt_surf.get_rect(center=([s // 2 for s in self.size]))
