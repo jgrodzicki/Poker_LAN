@@ -337,7 +337,6 @@ class Game:
             for i in range(13):
                 occured = [0] * 4
                 for c in cards:
-
                     if c[1] != i:
                         continue
                     occured[c[0]] = 1
@@ -370,11 +369,11 @@ class Game:
 
     def _is_flush(self, colors, figs, cards):
         if any(list(map(lambda x: x == 5, colors))):
-            idx = colors.index(5)
+            color = colors.index(5)
             res = []
             for c in cards:
-                if c[1] == idx:
-                    res.append(c[0])
+                if c[0] == color:
+                    res.append(c[1])
             return sorted(res, reverse=True)
         return None
 
@@ -436,4 +435,3 @@ class Game:
                 continue
             res.extend([i] * n)
         return res[::-1][:to_ret]
-
