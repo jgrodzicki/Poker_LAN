@@ -164,32 +164,31 @@ class Poker(ConnectionListener):
         self.pot_val = self.big_blind * 1.5
 
         self.bet = 0
-        self.bet_on_table = self.big_blind
         self.opp_bet = {id: 0 for id in self.opp_ids}
+        self.bet_on_table = self.big_blind + self.small_blind
 
         self.is_turn = False
         self.is_out = self.money == 0
 
         self.on_table = [None] * 5
-        self.bet_on_table = self.big_blind
 
         self.check_b.change_txt(f'call {self.big_blind}')
         self.raise_t.change_txt(f'{2*self.big_blind}')
 
         if self.id_big_blind == self.player_id:
-            self.money -= self.big_blind
+            self.money = max(0, self.money-self.big_blind)
             self.bet = self.big_blind
             self.check_b.change_txt('check')
         else:
-            self.opp_money[self.id_big_blind] -= self.big_blind
+            self.opp_money[self.id_big_blind] = max(0, self.opp_money[self.id_big_blind] - self.big_blind)
             self.opp_bet[self.id_big_blind] = self.big_blind
 
         if self.id_small_blind == self.player_id:
-            self.money -= self.small_blind
+            self.money = max(0, self.money-self.small_blind)
             self.bet = self.small_blind
             self.check_b.change_txt(f'call {self.big_blind - self.small_blind}')
         else:
-            self.opp_money[self.id_small_blind] -= self.small_blind
+            self.opp_money[self.id_big_blind] = max(0, self.opp_money[self.id_small_blind] - self.small_blind)
             self.opp_bet[self.id_small_blind] = self.small_blind
         self.is_opp_playing = {id: self.opp_money[id] > 0 for id in self.opp_ids}
 
