@@ -60,7 +60,6 @@ class Game:
                     continue
                 self.player_channels[id1].Send({'action': 'addplayer', 'player_id': id, 'money': self.money[id]})
                 self.player_channels[id].Send({'action': 'addplayer', 'player_id': id1, 'money': self.money[id1]})
-                # self.player_channels[id1].Send({'action': 'addnick', 'player_id': id, 'nick': self.id_to_nick[id]})
                 self.player_channels[id].Send({'action': 'addnick', 'player_id': id1, 'nick': self.id_to_nick[id1]})
 
             channel.Send({'action': 'startgame'})
@@ -380,9 +379,15 @@ class Game:
                     self.player_channels[id1].Send({'action': 'showcards', 'player_id': id, 'cards': self.cards[id]})
 
         for p, played in self.pot:
-            winners = self.get_winners(pl_hands)
+            hands_round = {}
+            for id, val in played.items():
+                if val:
+                    hands_round[id] = pl_hands[id]
+            winners = self.get_winners(hands_round)
             for w in winners:
                 self.money[int(w)] += p/len(winners)
+
+            print(f'pot: {self.pot}')
 
             for id in self.ids:
                 for w in winners:

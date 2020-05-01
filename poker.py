@@ -116,7 +116,6 @@ class Poker(ConnectionListener):
 
         self._draw_others()
 
-
         # update the screen
         pygame.display.update()
 
@@ -140,7 +139,7 @@ class Poker(ConnectionListener):
     def Network_addplayer(self, data):
         id = data['player_id']
         self.opp_ids.append(id)
-        self.opp_money[id] = data['money']
+        self.opp_money[id] = int(data['money'])
         self.opp_bet[id] = 0
         self.is_opp_playing[id] = True
         self.opp_cards_img[id] = [pygame.image.load('images/back.png'), pygame.image.load('images/back.png')]
@@ -166,6 +165,7 @@ class Poker(ConnectionListener):
 
         self.bet = 0
         self.bet_on_table = self.big_blind
+        self.opp_bet = {id: 0 for id in self.opp_ids}
 
         self.is_turn = False
         self.is_out = self.money == 0
