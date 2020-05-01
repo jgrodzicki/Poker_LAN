@@ -247,6 +247,7 @@ class Poker(ConnectionListener):
             self.bet_on_table = data['amount']
             self.raise_t.change_txt(f'{self.bet_on_table+self.big_blind}')
             self.check_b.change_txt(f'call {self.bet_on_table - self.bet}')
+            self.opp_bet[id] = data['amount']
 
     def Network_winner(self, data):
         id = data['player_id']
