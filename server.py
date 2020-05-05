@@ -90,7 +90,7 @@ if __name__ == '__main__':
                 exit()
         if len(sys.argv) > 5:
             big_blind = int(sys.argv[5])
-            if big_blind < init_money:
+            if big_blind > init_money:
                 print('seriously big blind greater than init money?')
                 exit()
     except ValueError:

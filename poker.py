@@ -168,7 +168,7 @@ class Poker(ConnectionListener):
 
         self.bet = 0
         self.opp_bet = {id: 0 for id in self.opp_ids}
-        self.bet_on_table = self.big_blind + self.small_blind
+        self.bet_on_table = self.big_blind
 
         self.is_turn = False
         self.is_out = self.money == 0
@@ -197,6 +197,7 @@ class Poker(ConnectionListener):
 
 
     def Network_nextturn(self, data):
+        self.raise_b.is_active = False
         if self.player_id == data['player_id_turn']:
             self.is_turn = True
             self.id_turn = None
@@ -204,18 +205,21 @@ class Poker(ConnectionListener):
             self.id_turn = data['player_id_turn']
 
     def Network_flop(self, data):
+        self.raise_b.is_active = False
         self.bet = self.bet_on_table = 0
         self.opp_bet = {id: 0 for id in self.opp_ids}
         self.on_table[:3] = list(map(lambda c: pygame.image.load(f'images/{c}.png'), data['cards']))
         self.raise_t.change_txt(str(self.big_blind))
 
     def Network_turn(self, data):
+        self.raise_b.is_active = False
         self.bet = self.bet_on_table = 0
         self.opp_bet = {id: 0 for id in self.opp_ids}
         self.on_table[3] = pygame.image.load(f'images/{data["card"]}.png')
         self.raise_t.change_txt(str(self.big_blind))
 
     def Network_river(self, data):
+        self.raise_b.is_active = False
         self.bet = self.bet_on_table = 0
         self.opp_bet = {id: 0 for id in self.opp_ids}
         self.on_table[4] = pygame.image.load(f'images/{data["card"]}.png')
@@ -239,6 +243,7 @@ class Poker(ConnectionListener):
         id = data['player_id']
         if id != self.player_id:
             self.opp_money[id] = data['money']
+            self.opp_bet[id] = data['amount']
 
     def Network_raise(self, data):
         id = data['player_id']
@@ -302,12 +307,12 @@ class Poker(ConnectionListener):
             self.money -= (self.bet_on_table - self.bet)
             self.bet = self.bet_on_table
             self.Send({'action': 'call', 'player_id': self.player_id, 'money': self.money, 'allin': False,
-                       'extra_to_pot': extra_to_pot})
+                       'extra_to_pot': extra_to_pot, 'amount': self.bet})
         else:
             self.bet += self.money
             self.money = 0
             self.Send({'action': 'call', 'player_id': self.player_id, 'money': self.money, 'allin': True,
-                       'extra_to_pot': extra_to_pot})
+                       'extra_to_pot': extra_to_pot, 'amount': self.bet})
 
         self.check_b.to_check()
 
@@ -341,6 +346,7 @@ class Poker(ConnectionListener):
                     elif self.check_b.is_clicked():
                         self._call()
                     elif self.raise_b.is_clicked():
+                        print(self.bet_on_table)
                         val = self.raise_t.get_value()
                         if val < self.bet_on_table+self.big_blind or val > self.money + self.bet:
                             self.error_time = time.time()

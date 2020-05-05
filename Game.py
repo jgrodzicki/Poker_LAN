@@ -257,7 +257,7 @@ class Game:
             self.its = 0
             self.no_playing = len(list(filter(lambda id: self.is_playing[id] and not self.is_allin[id], self.ids)))
 
-            if self.no_playing == 0:
+            if self.no_playing <= 1:
                 if not self.is_flop:
                     self.flop()
                     time.sleep(4)
