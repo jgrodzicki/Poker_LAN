@@ -86,6 +86,7 @@ class Poker(ConnectionListener):
 
         # self.mess = Messages((0, self.height-115), self.screen)
         self.mess = Messages((5, 5), self.screen)
+        self.actions_mess = Messages((5, self.height-35), self.screen, size=(275, 25))
 
         self.Connect((addr, int(port)))
 
@@ -195,6 +196,11 @@ class Poker(ConnectionListener):
             self.opp_bet[self.id_small_blind] = self.small_blind
         self.is_opp_playing = {id: self.opp_money[id] > 0 for id in self.opp_ids}
 
+        moneys = data['moneys']
+        for id, v in moneys.items():
+            if id != self.player_id:
+                self.opp_money[id] = v
+
 
     def Network_nextturn(self, data):
         self.raise_b.is_active = False
@@ -227,6 +233,7 @@ class Poker(ConnectionListener):
 
     def Network_fold(self, data):
         id = data['player_id']
+        self.actions_mess.clear()
         if id == self.player_id:
             self.is_playing = False
             self.card1.fill((255, 255, 255, 100), None, pygame.BLEND_RGBA_MULT)
@@ -235,8 +242,12 @@ class Poker(ConnectionListener):
             self.is_opp_playing[id] = False
             self.opp_cards_img[id][0].fill((255, 255, 255, 100), None, pygame.BLEND_RGBA_MULT)
             self.opp_cards_img[id][1].fill((255, 255, 255, 100), None, pygame.BLEND_RGBA_MULT)
+            self.actions_mess.add_text(f'{self.players_nick[id]} folded')
 
     def Network_check(self, data):
+        id = data['player_id']
+        self.actions_mess.clear()
+        self.actions_mess.add_text(f'{self.players_nick[id]} checked')
         pass
 
     def Network_call(self, data):
@@ -244,6 +255,9 @@ class Poker(ConnectionListener):
         if id != self.player_id:
             self.opp_money[id] = data['money']
             self.opp_bet[id] = data['amount']
+
+            self.actions_mess.clear()
+            self.actions_mess.add_text(f'{self.players_nick[id]} called {data["amount"]}')
 
     def Network_raise(self, data):
         id = data['player_id']
@@ -253,6 +267,9 @@ class Poker(ConnectionListener):
             self.raise_t.change_txt(f'{self.bet_on_table+self.big_blind}')
             self.check_b.change_txt(f'call {self.bet_on_table - self.bet}')
             self.opp_bet[id] = data['amount']
+
+            self.actions_mess.clear()
+            self.actions_mess.add_text(f'{self.players_nick[id]} raised to {data["amount"]}')
 
     def Network_winner(self, data):
         id = data['player_id']
@@ -425,6 +442,7 @@ class Poker(ConnectionListener):
         self.screen.blit(self.text_font.render(f'big blind: {self.big_blind}', True, (255, 255, 255), None),
                          (self.width-100, 0))
         self.mess.draw()
+        self.actions_mess.draw()
 
         self.screen.blit(self.table_img, (self.table_img_x, self.table_img_y))
 

@@ -126,7 +126,8 @@ class Game:
         print(self.id_big_blind, self.id_small_blind)
 
         for id in self.ids:
-            self.player_channels[id].Send({'action': 'nextround', 'id_big_blind': self.id_big_blind, 'id_small_blind': self.id_small_blind, 'pot': self.pot})
+            self.player_channels[id].Send({'action': 'nextround', 'id_big_blind': self.id_big_blind, 'id_small_blind': self.id_small_blind,
+                                           'pot': self.pot, 'moneys': self.money})
             self.player_channels[id].Send({'action': 'getcards', 'cards': self.cards[id]})
             self.player_channels[id].Send({'action': 'nextturn', 'player_id_turn': self.id_turn, 'pot': self.pot})
 
@@ -207,6 +208,7 @@ class Game:
                     won_id = id
                     break
             for p in self.pot:
+                self.money[won_id] += p[0]
                 for id in self.ids:
                     self.player_channels[id].Send({'action': 'clearmsg'})
                     self.player_channels[id].Send({'action': 'winner', 'player_id': won_id, 'won': p[0]})
@@ -502,7 +504,13 @@ class Game:
 
     def _is_flush(self, colors, figs, cards):
         if any(list(map(lambda x: x >= 5, colors))):
-            color = colors.index(5)
+            if 5 in colors:
+                color = colors.index(5)
+            elif 6 in colors:
+                color = colors.index(6)
+            elif 7 in colors:
+                color = colors.index(7)
+
             res = []
             for c in cards:
                 if c[0] == color:
