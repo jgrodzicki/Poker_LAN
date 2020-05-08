@@ -178,10 +178,9 @@ class Game:
             self.player_channels[id].Send({'action': 'init', 'init_money': self.init_money, 'big_blind': self.big_blind,
                      'player_id': id})
 
-        for id1 in self.ids:  # notify about other players
-            for id2 in self.ids:
-                if id1 == id2:
-                    continue
+        for i, id1 in enumerate(self.ids):  # notify about other players
+            for j in np.append(np.arange(i+1, len(self.ids)), np.arange(i)):
+                id2 = self.ids[j]
                 print(f'sending to {id1} about {id2}')
                 self.player_channels[id1].Send({'action': 'addplayer', 'player_id': id2, 'money': self.init_money})
 
@@ -209,6 +208,7 @@ class Game:
                     break
             for p in self.pot:
                 for id in self.ids:
+                    self.player_channels[id].Send({'action': 'clearmsg'})
                     self.player_channels[id].Send({'action': 'winner', 'player_id': won_id, 'won': p[0]})
 
             time.sleep(4)
@@ -501,7 +501,7 @@ class Game:
 
 
     def _is_flush(self, colors, figs, cards):
-        if any(list(map(lambda x: x == 5, colors))):
+        if any(list(map(lambda x: x >= 5, colors))):
             color = colors.index(5)
             res = []
             for c in cards:
